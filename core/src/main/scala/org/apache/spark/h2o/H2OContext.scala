@@ -154,6 +154,7 @@ class H2OContext (@transient val sparkContext: SparkContext) extends {
       H2O.waitForCloudSize(executors.length, cloudTimeout)
     } else {
       logTrace("Sparkling H2O - LOCAL mode")
+      H2OContext.registerClientWebAPI(sparkContext)
       // Since LocalBackend does not wait for initialization (yet)
       H2O.waitForCloudSize(1, cloudTimeout)
     }
@@ -592,5 +593,13 @@ object H2OContext extends Logging {
                             null, new Array[String](0),
                             "Return all Frames in the H2O distributed K/V store.",
                             hfactory)
+
+    def hfactoryCode = new HandlerFactory {
+      override def create(aClass: Class[_ <: Handler]): Handler = new ScalaCodeHandler(sc)
+    }
+    RequestServer.register("/3/scalacode","POST",
+      classOf[ScalaCodeHandler],"interpret",
+      null,new Array[String](0),"Return the result of the code interpretation",
+      hfactoryCode);
   }
 }
