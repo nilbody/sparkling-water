@@ -594,12 +594,17 @@ object H2OContext extends Logging {
                             "Return all Frames in the H2O distributed K/V store.",
                             hfactory)
 
+    val scalaCodeHandler = new ScalaCodeHandler(sc)
     def hfactoryCode = new HandlerFactory {
-      override def create(aClass: Class[_ <: Handler]): Handler = new ScalaCodeHandler(sc)
+      override def create(aClass: Class[_ <: Handler]): Handler = scalaCodeHandler
     }
     RequestServer.register("/3/scalacode","POST",
       classOf[ScalaCodeHandler],"interpret",
       null,new Array[String](0),"Return the result of the code interpretation",
       hfactoryCode);
+
+    RequestServer.register("/3/sessionId","POST",
+      classOf[ScalaCodeHandler],"createSession",
+      null,new Array[String](0),"Return session id for the communication with the scala interpreter",hfactoryCode);
   }
 }

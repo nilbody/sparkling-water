@@ -8,4 +8,6 @@ class ScalaCodeResultV3 extends Schema[IcedResult,ScalaCodeResultV3] {
   var result: String = _
   @API(help = "Response of the REPL", direction = API.Direction.OUTPUT)
   var response: String = _
+  @API(help = "Session Id used to identify subsequent calls", direction = API.Direction.INPUT)
+  var sessionId: String = _
 }
