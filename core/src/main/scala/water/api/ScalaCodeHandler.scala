@@ -1,10 +1,11 @@
 package water.api
 
 import org.apache.spark.SparkContext
+import org.apache.spark.repl.{SparkILoop, SparkIMain}
 import water.Iced
 
 import scala.tools.nsc.Settings
-import scala.tools.nsc.interpreter.IMain
+import scala.tools.nsc.interpreter.{ILoop, IMain}
 
 
 /**
@@ -12,16 +13,27 @@ import scala.tools.nsc.interpreter.IMain
  */
 class ScalaCodeHandler(val sc: SparkContext)  extends Handler {
 
-  val settings = new Settings
-  settings.usejavacp.value = true
-  val n = new IMain(settings)
+  val sparkContext: SparkContext = sc
+  val intr = initializeInterpreter()
 
   def interpret(version:Int, s: ScalaCodeV3): ScalaCodeResultV3 = {
     val reply = new ScalaCodeResultV3
-    reply.result = n.interpret(s.code).toString
+    reply.result = intr.interpret(s.code).toString
     reply
   }
+
+  def initializeInterpreter(): IMain = {
+    val settings = new Settings
+    settings.usejavacp.value = true
+
+    val imain = new IMain(settings)
+    imain.bind("sc",sc)
+    imain
+  }
+
+
 }
+
 
 private[api] class IcedCode(val code: String) extends Iced[IcedCode] {
 
