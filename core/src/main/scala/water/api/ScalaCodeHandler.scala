@@ -33,7 +33,7 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler {
   }
 
   def createSession(version:Int, s: ScalaCodeV3) :  ScalaCodeResultV3 = {
-    val intr = initializeInterpreter();
+    val intr = ScalaCodeHandler.initializeInterpreter(sparkContext);
     val id = UUID.randomUUID().toString // simple solution for now ..
     mapIntr += id -> intr
     val reply = new ScalaCodeResultV3
@@ -41,16 +41,19 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler {
     reply
   }
 
-  def initializeInterpreter(): IMain = {
+
+}
+
+object ScalaCodeHandler{
+  def initializeInterpreter(sparkContext: SparkContext): IMain = {
     val settings = new Settings
     settings.usejavacp.value = true
     // setup the classloader of some H2O class
     settings.embeddedDefaults[NFSFileVec]
     val imain = new IMain(settings)
-    imain.quietBind("sc",sc)
+    imain.quietBind("sc",sparkContext)
     imain
   }
-
 }
 
 private[api] class IcedCode(val code: String, val sessionId: String) extends Iced[IcedCode] {
