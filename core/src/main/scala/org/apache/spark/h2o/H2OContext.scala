@@ -26,6 +26,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import water._
 import water.api._
+import water.api.scalaInt.ScalaCodeHandler
 import water.fvec.Vec
 import water.parser.ValueString
 
@@ -598,13 +599,21 @@ object H2OContext extends Logging {
     def hfactoryCode = new HandlerFactory {
       override def create(aClass: Class[_ <: Handler]): Handler = scalaCodeHandler
     }
-    RequestServer.register("/3/scalacode","POST",
+    RequestServer.register("/3/scalaint/(?<sessionid>.*)","POST",
       classOf[ScalaCodeHandler],"interpret",
-      null,new Array[String](0),"Return the result of the code interpretation",
+      null,Array("session_id"),"Interpret the code and return the result",
       hfactoryCode);
 
-    RequestServer.register("/3/initinterpreter","POST",
-      classOf[ScalaCodeHandler],"createSession",
-      null,new Array[String](0),"Return session id for the communication with the scala interpreter",hfactoryCode);
+    RequestServer.register("/3/scalaint","POST",
+      classOf[ScalaCodeHandler],"initSession",
+      null,new Array[String](0),"Return session id for communication with scala interpreter",hfactoryCode);
+
+    RequestServer.register("/3/scalaint","GET",
+      classOf[ScalaCodeHandler],"getSessions",
+      null,new Array[String](0),"Return all active session IDs",hfactoryCode);
+
+    RequestServer.register("/3/scalaint/(?<sessionid>.*)","DELETE",
+      classOf[ScalaCodeHandler],"destroySession",
+      null,Array("session_id"),"Return session id for communication with scala interpreter",hfactoryCode);
   }
 }
