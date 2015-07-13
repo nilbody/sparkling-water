@@ -40,12 +40,13 @@ class ScalaCodeHandler(val sc: SparkContext) extends Handler {
     val reply = new ScalaCodeResultV3
     if (s.sessionId == null || !mapIntr.isDefinedAt(s.sessionId)) {
       // session ID not set
-      reply.response = "Create session ID using the address /3/initintrepreter"
+      reply.response = "Create session ID using the address /3/initinterpreter"
     } else {
       mapIntr += s.sessionId -> (mapIntr(s.sessionId)._1,Platform.currentTime) // update the time
       val interpreter = mapIntr(s.sessionId)._1
       reply.result =interpreter.interpret(s.code).toString
       reply.response = interpreter.getOutputStream().toString
+      interpreter.getOutputStream().getBuffer.setLength(0)
       reply.sessionId = s.sessionId
     }
     reply
