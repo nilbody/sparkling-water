@@ -603,7 +603,7 @@ object H2OContext extends Logging {
       null,new Array[String](0),"Return the result of the code interpretation",
       hfactoryCode);
 
-    RequestServer.register("/3/sessionId","POST",
+    RequestServer.register("/3/initintrepreter","POST",
       classOf[ScalaCodeHandler],"createSession",
       null,new Array[String](0),"Return session id for the communication with the scala interpreter",hfactoryCode);
   }
