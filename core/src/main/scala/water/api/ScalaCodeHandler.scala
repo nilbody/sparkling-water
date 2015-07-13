@@ -1,39 +1,31 @@
 package water.api
 
-import java.io.{ByteArrayOutputStream, PrintWriter}
-import java.util
-import java.util.Collections.SynchronizedMap
+import java.io.{StringWriter, ByteArrayOutputStream, PrintWriter}
 import java.util.UUID
-import java.util.concurrent.{ConcurrentMap, ConcurrentHashMap}
 
 import org.apache.spark.SparkContext
-import org.apache.spark.repl.{SparkILoop, SparkIMain}
-import spire.algebra.IdentityModule
 import water.Iced
 import water.fvec.NFSFileVec
 
 import scala.collection.concurrent.TrieMap
-import scala.collection.mutable.ListBuffer
 import scala.compat.Platform
 import scala.tools.nsc.Settings
-import scala.tools.nsc.interpreter.{NamedParam, ILoop, IMain}
-import scala.collection._
 
 /**
  * ScalaCode Handler
  */
-class ScalaCodeHandler(val sc: SparkContext)  extends Handler with org.apache.spark.Logging {
+class ScalaCodeHandler(val sc: SparkContext) extends Handler {
 
   val intrPoolSize = 3
-  val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[IMain]
+  val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OIMain]
   initializePool()
   val sparkContext: SparkContext = sc
-  var mapIntr = new TrieMap[String, (IMain,Long)]
+  var mapIntr = new TrieMap[String, (H2OIMain,Long)]
   val timeout = 300000 // 5 minutes in milliseconds
   val checkThread = new Thread(new Runnable {
     def run() {
       while(true){
-        mapIntr.foreach{case (id: String, (intr: IMain, lastChecked: Long))=>{
+        mapIntr.foreach{case (id: String, (intr: H2OIMain, lastChecked: Long))=>{
           if(Platform.currentTime-lastChecked>=timeout){
             mapIntr(id)._1.close()
             mapIntr -= id
@@ -44,7 +36,6 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler with org.apache.sp
     }
   })
   checkThread.start()
-
   def interpret(version:Int, s: ScalaCodeV3): ScalaCodeResultV3 = {
     val reply = new ScalaCodeResultV3
     if (s.sessionId == null || !mapIntr.isDefinedAt(s.sessionId)) {
@@ -52,7 +43,9 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler with org.apache.sp
       reply.response = "Create session ID using the address /3/initintrepreter"
     } else {
       mapIntr += s.sessionId -> (mapIntr(s.sessionId)._1,Platform.currentTime) // update the time
-      reply.result = mapIntr(s.sessionId)._1.interpret(s.code).toString
+      val interpreter = mapIntr(s.sessionId)._1
+      reply.result =interpreter.interpret(s.code).toString
+      reply.response = interpreter.getOutputStream().toString
       reply.sessionId = s.sessionId
     }
     reply
@@ -77,13 +70,12 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler with org.apache.sp
   }
 
   def initializePool(): Unit ={
-    logInfo("Initializing pool of interpreters")
     for(i <- 0 to intrPoolSize){
       freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc))
     }
   }
 
-  def getInterpreter(): IMain ={
+  def getInterpreter(): H2OIMain ={
       this.synchronized{
         if(!freeInterpreters.isEmpty) {
           val intr = freeInterpreters.poll()
@@ -102,16 +94,17 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler with org.apache.sp
 }
 
 object ScalaCodeHandler{
-  def initializeInterpreter(sparkContext: SparkContext): IMain = {
+  def initializeInterpreter(sparkContext: SparkContext): H2OIMain = {
     val settings = new Settings
     settings.usejavacp.value = true
     // setup the classloader of some H2O class
     settings.embeddedDefaults[NFSFileVec]
-    val imain = new IMain(settings)
+    val imain = new H2OIMain(settings,new StringWriter())
     imain.quietBind("sc",sparkContext)
     imain
   }
 }
+
 
 private[api] class IcedCode(val code: String, val sessionId: String) extends Iced[IcedCode] {
 
