@@ -13,6 +13,7 @@ import water.Iced
 import water.fvec.NFSFileVec
 
 import scala.collection.concurrent.TrieMap
+import scala.collection.mutable.ListBuffer
 import scala.compat.Platform
 import scala.tools.nsc.Settings
 import scala.tools.nsc.interpreter.{NamedParam, ILoop, IMain}
@@ -21,11 +22,14 @@ import scala.collection._
 /**
  * ScalaCode Handler
  */
-class ScalaCodeHandler(val sc: SparkContext)  extends Handler {
+class ScalaCodeHandler(val sc: SparkContext)  extends Handler with org.apache.spark.Logging {
 
+  val intrPoolSize = 3
+  val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[IMain]
+  initializePool()
   val sparkContext: SparkContext = sc
   var mapIntr = new TrieMap[String, (IMain,Long)]
-  val timeout = 300000 // 5 minutes in miliseconds
+  val timeout = 300000 // 5 minutes in milliseconds
   val checkThread = new Thread(new Runnable {
     def run() {
       while(true){
@@ -55,7 +59,7 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler {
   }
 
   def createSession(version:Int, s: ScalaCodeV3) :  ScalaCodeResultV3 = {
-    val intr = ScalaCodeHandler.initializeInterpreter(sparkContext);
+    val intr = getInterpreter()
     var done = false
     var id = UUID.randomUUID().toString // simple solution for now ..
     do{
@@ -72,7 +76,29 @@ class ScalaCodeHandler(val sc: SparkContext)  extends Handler {
     reply
   }
 
+  def initializePool(): Unit ={
+    logInfo("Initializing pool of interpreters")
+    for(i <- 0 to intrPoolSize){
+      freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc))
+    }
+  }
 
+  def getInterpreter(): IMain ={
+      this.synchronized{
+        if(!freeInterpreters.isEmpty) {
+          val intr = freeInterpreters.poll()
+          new Thread(new Runnable {
+            def run(): Unit = {
+                freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc))
+            }
+          }).start()
+          intr
+        }else{
+          // pool is empty at the moment and is being filled, return new interpreter without using the pool
+          ScalaCodeHandler.initializeInterpreter(sc)
+        }
+      }
+  }
 }
 
 object ScalaCodeHandler{
