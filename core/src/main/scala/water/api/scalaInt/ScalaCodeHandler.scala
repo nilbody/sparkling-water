@@ -24,19 +24,18 @@ class ScalaCodeHandler(val sc: SparkContext) extends Handler {
   val timeout = 300000 // 5 minutes in milliseconds
   initializeHandler()
 
-  def interpret(version: Int, s: ScalaCodeV3): ScalaCodeResultV3 = {
-    val reply = new ScalaCodeResultV3
+  def interpret(version: Int, s: ScalaCodeV3): ScalaCodeV3 = {
     if (s.session_id == null || !mapIntr.isDefinedAt(s.session_id)) {
       // session ID not set
-      reply.response = "Create session ID using the address /3/scalaint"
+      s.response = "Create session ID using the address /3/scalaint"
     } else {
       mapIntr += s.session_id ->(mapIntr(s.session_id)._1, Platform.currentTime) // update the time
       val interpreter = mapIntr(s.session_id)._1
-      reply.status = interpreter.interpret(s.code).toString
-      reply.response = interpreter.getOutputStream().toString
+      s.status = interpreter.interpret(s.code).toString
+      s.response = interpreter.getOutputStream().toString
       interpreter.getOutputStream().getBuffer.setLength(0)
     }
-    reply
+    s
   }
 
   def initSession(version: Int, s: ScalaSessionIdV3): ScalaSessionIdV3 = {
@@ -52,23 +51,20 @@ class ScalaCodeHandler(val sc: SparkContext) extends Handler {
       }
     }
     while (!done)
-    val reply = new ScalaSessionIdV3
-    reply.session_id = id
-    reply
+    s.session_id = id
+    s
   }
 
   def destroySession(version: Int, s: ScalaMsgV3) : ScalaMsgV3 = {
     mapIntr(s.session_id)._1.close()
     mapIntr -= s.session_id
-    val scalaMsg = new ScalaMsgV3
-    scalaMsg.msg = "Session closed"
-    scalaMsg
+    s.msg = "Session closed"
+    s
   }
 
   def getSessions(version: Int, s: ScalaSessionsV3) : ScalaSessionsV3 = {
-    val scalaCodeSessions = new ScalaSessionsV3
-    scalaCodeSessions.sessions = mapIntr.keys.toArray
-    scalaCodeSessions
+    s.sessions = mapIntr.keys.toArray
+    s
   }
 
   def getInterpreter(): H2OIMain = {
@@ -132,7 +128,6 @@ private[api] class IcedCode(val session_id: String,val code: String) extends Ice
   def this() = this("", "") // initialize with empty values, this is used by the createImpl method in the
   //RequestServer, as it calls constructor without arguments
 }
-private[api] class IcedCodeResult extends Iced[IcedCodeResult] {}
 private[api] class IcedSessions extends Iced[IcedSessions] {}
 private[api] class IcedMsg(val session_id: String, val msg: String) extends Iced[IcedMsg] {
   def this() = this("","")

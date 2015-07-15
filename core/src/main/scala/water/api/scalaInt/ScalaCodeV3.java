@@ -14,5 +14,11 @@ public class ScalaCodeV3 extends Schema<IcedCode, ScalaCodeV3> {
 
     @API(help = "Scala code to interpret", direction = API.Direction.INPUT)
     public String code;
+
+    @API(help = "Status of the code execution", direction = API.Direction.OUTPUT)
+    public String status;
+
+    @API(help = "Response of the interpreter", direction = API.Direction.OUTPUT)
+    public String response;
 }
 
