@@ -12,7 +12,9 @@ class H2OIMain(settings: Settings, out : StringWriter) extends IMain(settings,ne
   val printStream = new PrintStream(baos)
 
   def printed : String = {
-    baos.toString()
+    val result =  baos.toString()
+    baos.reset()
+    result
   }
 
   def getOutputStringWriter(): StringWriter  = {
