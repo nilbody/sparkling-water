@@ -2,8 +2,8 @@ package water.api
 
 import java.io.{ByteArrayOutputStream, PrintStream, PrintWriter, StringWriter}
 
-import scala.tools.nsc.{ConsoleWriter, NewLinePrintWriter, interpreter, Settings}
-import scala.tools.nsc.interpreter.{JPrintWriter, IMain}
+import scala.tools.nsc.Settings
+import scala.tools.nsc.interpreter.IMain
 
 class H2OIMain(settings: Settings, out : StringWriter) extends IMain(settings,new PrintWriter(out)){
 
@@ -20,5 +20,4 @@ class H2OIMain(settings: Settings, out : StringWriter) extends IMain(settings,ne
   def getOutputStringWriter(): StringWriter  = {
   return out
 }
-
 }

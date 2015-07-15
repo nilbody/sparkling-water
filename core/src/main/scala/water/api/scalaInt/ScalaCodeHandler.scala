@@ -1,6 +1,6 @@
 package water.api.scalaInt
 
-import java.io.{ByteArrayOutputStream, PrintStream, StringWriter}
+import java.io._
 import java.util.UUID
 
 import org.apache.spark.SparkContext
@@ -13,6 +13,7 @@ import water.fvec.NFSFileVec
 import scala.collection.concurrent.TrieMap
 import scala.compat.Platform
 import scala.tools.nsc.Settings
+import scala.tools.nsc.interpreter.{SimpleReader, ILoop}
 
 /**
  * ScalaCode Handler
@@ -23,9 +24,8 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
   val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OIMain]
   var mapIntr = new TrieMap[String, (H2OIMain, Long)]
   val timeout = 300000 // 5 minutes in milliseconds
-
-
   initializeHandler()
+
   def interpret(version: Int, s: ScalaCodeV3): ScalaCodeV3 = {
     if (s.session_id == null || !mapIntr.isDefinedAt(s.session_id)) {
       // session ID not set
@@ -33,7 +33,9 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
     } else {
       mapIntr += s.session_id ->(mapIntr(s.session_id)._1, Platform.currentTime) // update the time
       val interpreter = mapIntr(s.session_id)._1
-      Console.withOut(interpreter.printStream){
+
+      // redirect output from console to our own stream
+      scala.Console.withOut(interpreter.printStream){
         s.status = interpreter.interpret(s.code).toString
       }
       s.response = interpreter.getOutputStringWriter().toString
@@ -125,6 +127,7 @@ object ScalaCodeHandler {
     imain.quietBind("sc", sparkContext)
     imain.quietBind("h2oContext",h2OContext)
     imain.quietBind("sqlContext",new SQLContext(sparkContext))
+    imain.quietImport("org.apache.spark.h2o._","org.apache.spark._")
     imain
   }
 }
