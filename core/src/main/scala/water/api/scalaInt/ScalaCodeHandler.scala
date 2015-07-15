@@ -4,6 +4,7 @@ import java.io.StringWriter
 import java.util.UUID
 
 import org.apache.spark.SparkContext
+import org.apache.spark.h2o.H2OContext
 import water.Iced
 import water.api.{H2OIMain, Handler}
 import water.fvec.NFSFileVec
@@ -15,11 +16,10 @@ import scala.tools.nsc.Settings
 /**
  * ScalaCode Handler
  */
-class ScalaCodeHandler(val sc: SparkContext) extends Handler {
+class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends Handler {
 
   val intrPoolSize = 3
   val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OIMain]
-  val sparkContext: SparkContext = sc
   var mapIntr = new TrieMap[String, (H2OIMain, Long)]
   val timeout = 300000 // 5 minutes in milliseconds
   initializeHandler()
@@ -111,13 +111,14 @@ class ScalaCodeHandler(val sc: SparkContext) extends Handler {
 }
 
 object ScalaCodeHandler {
-  def initializeInterpreter(sparkContext: SparkContext): H2OIMain = {
+  def initializeInterpreter(sparkContext: SparkContext, h2OContext: H2OContext): H2OIMain = {
     val settings = new Settings
     settings.usejavacp.value = true
     // setup the classloader of some H2O class
     settings.embeddedDefaults[NFSFileVec]
     val imain = new H2OIMain(settings, new StringWriter())
     imain.quietBind("sc", sparkContext)
+    imain.quietBind("h2oContext",h2OContext)
     imain
   }
 }

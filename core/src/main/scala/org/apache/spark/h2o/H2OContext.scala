@@ -595,7 +595,7 @@ object H2OContext extends Logging {
                             "Return all Frames in the H2O distributed K/V store.",
                             hfactory)
 
-    val scalaCodeHandler = new ScalaCodeHandler(sc)
+    val scalaCodeHandler = new ScalaCodeHandler(sc,)
     def hfactoryCode = new HandlerFactory {
       override def create(aClass: Class[_ <: Handler]): Handler = scalaCodeHandler
     }
