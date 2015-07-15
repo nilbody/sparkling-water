@@ -150,12 +150,12 @@ class H2OContext (@transient val sparkContext: SparkContext) extends {
                               executors)
       logDebug(s"Arguments used for launching h2o nodes: ${h2oClientArgs.mkString(" ")}")
       H2OClientApp.main(h2oClientArgs)
-      H2OContext.registerClientWebAPI(sparkContext)
+      H2OContext.registerClientWebAPI(sparkContext,this)
       H2O.finalizeRegistration()
       H2O.waitForCloudSize(executors.length, cloudTimeout)
     } else {
       logTrace("Sparkling H2O - LOCAL mode")
-      H2OContext.registerClientWebAPI(sparkContext)
+      H2OContext.registerClientWebAPI(sparkContext,this)
       // Since LocalBackend does not wait for initialization (yet)
       H2O.waitForCloudSize(1, cloudTimeout)
     }
@@ -585,7 +585,7 @@ object H2OContext extends Logging {
     }
   }
 
-  private[h2o] def registerClientWebAPI(sc: SparkContext): Unit = {
+  private[h2o] def registerClientWebAPI(sc: SparkContext, h2oContext: H2OContext): Unit = {
     def hfactory = new HandlerFactory {
       override def create(aClass: Class[_ <: Handler]): Handler = new RDDsHandler(sc)
     }
@@ -595,7 +595,7 @@ object H2OContext extends Logging {
                             "Return all Frames in the H2O distributed K/V store.",
                             hfactory)
 
-    val scalaCodeHandler = new ScalaCodeHandler(sc,)
+    val scalaCodeHandler = new ScalaCodeHandler(sc,h2oContext)
     def hfactoryCode = new HandlerFactory {
       override def create(aClass: Class[_ <: Handler]): Handler = scalaCodeHandler
     }
