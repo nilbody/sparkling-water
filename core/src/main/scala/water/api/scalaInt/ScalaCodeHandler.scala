@@ -1,10 +1,11 @@
 package water.api.scalaInt
 
-import java.io.StringWriter
+import java.io.{ByteArrayOutputStream, PrintStream, StringWriter}
 import java.util.UUID
 
 import org.apache.spark.SparkContext
 import org.apache.spark.h2o.H2OContext
+import org.apache.spark.sql.SQLContext
 import water.Iced
 import water.api.{H2OIMain, Handler}
 import water.fvec.NFSFileVec
@@ -22,8 +23,9 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
   val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OIMain]
   var mapIntr = new TrieMap[String, (H2OIMain, Long)]
   val timeout = 300000 // 5 minutes in milliseconds
-  initializeHandler()
 
+
+  initializeHandler()
   def interpret(version: Int, s: ScalaCodeV3): ScalaCodeV3 = {
     if (s.session_id == null || !mapIntr.isDefinedAt(s.session_id)) {
       // session ID not set
@@ -31,9 +33,12 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
     } else {
       mapIntr += s.session_id ->(mapIntr(s.session_id)._1, Platform.currentTime) // update the time
       val interpreter = mapIntr(s.session_id)._1
-      s.status = interpreter.interpret(s.code).toString
-      s.response = interpreter.getOutputStream().toString
-      interpreter.getOutputStream().getBuffer.setLength(0)
+      Console.withOut(interpreter.printStream){
+        s.status = interpreter.interpret(s.code).toString
+      }
+      s.response = interpreter.getOutputStringWriter().toString
+      interpreter.getOutputStringWriter().getBuffer.setLength(0) // reset the writer
+      s.output = interpreter.printed
     }
     s
   }
@@ -73,20 +78,20 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
         val intr = freeInterpreters.poll()
         new Thread(new Runnable {
           def run(): Unit = {
-            freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc))
+            freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc,h2oContext))
           }
         }).start()
         intr
       } else {
         // pool is empty at the moment and is being filled, return new interpreter without using the pool
-        ScalaCodeHandler.initializeInterpreter(sc)
+        ScalaCodeHandler.initializeInterpreter(sc,h2oContext)
       }
     }
   }
 
   def initializePool(): Unit = {
-    for (i <- 0 to intrPoolSize) {
-      freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc))
+    for (i <- 0 until intrPoolSize) {
+      freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc,h2oContext))
     }
   }
 
@@ -119,6 +124,7 @@ object ScalaCodeHandler {
     val imain = new H2OIMain(settings, new StringWriter())
     imain.quietBind("sc", sparkContext)
     imain.quietBind("h2oContext",h2OContext)
+    imain.quietBind("sqlContext",new SQLContext(sparkContext))
     imain
   }
 }

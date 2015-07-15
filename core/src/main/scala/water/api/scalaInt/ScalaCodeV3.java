@@ -20,5 +20,9 @@ public class ScalaCodeV3 extends Schema<IcedCode, ScalaCodeV3> {
 
     @API(help = "Response of the interpreter", direction = API.Direction.OUTPUT)
     public String response;
+
+    @API(help = "Redirected console output, for example output of println is stored to this field",
+            direction = API.Direction.OUTPUT)
+    public String output;
 }
 
