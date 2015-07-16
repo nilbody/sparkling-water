@@ -6,7 +6,6 @@ import org.apache.spark.SparkContext
 import org.apache.spark.h2o.H2OContext
 import org.apache.spark.repl.SparkIMain
 import org.apache.spark.sql.SQLContext
-import water.api.scalaInt.H2OIMain
 import water.fvec.NFSFileVec
 
 import scala.tools.nsc.interpreter._
@@ -41,26 +40,28 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, outWriter: Stri
     // set the input stream
     val input = new BufferedReader(new StringReader(code))
     in = SimpleReader(input, out, false)
-    postInitialization()
-    loadFiles(settings)
     // redirect output from console to our own stream
     scala.Console.withOut(printStream) {
       try loop()
       catch AbstractOrMissingHandler()
     }
-    intp match {
-      case h2oIMain: H2OIMain => h2oIMain.lastResult
-      case _ => throw new ClassCastException
+    if(intp.reporter.hasErrors){
+      "Error"
+    }else{
+      "Success"
     }
   }
   override def createInterpreter(): Unit = {
-    intp = new H2OIMain(settings,out)
+    intp = new IMain(settings,out)
     addThunk({
+      intp.quietImport("org.apache.spark.h2o._","org.apache.spark._")
       intp.quietBind("sc", sc)
       intp.quietBind("h2oContext", h2oContext)
       intp.quietBind("sqlContext", new SQLContext(sc))
     })
     intp.initializeSynchronous()
+    postInitialization()
+    loadFiles(settings)
   }
 
   def interpreterResponse: String = {
