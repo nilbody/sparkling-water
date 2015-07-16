@@ -56,9 +56,9 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, outWriter: Stri
   override def createInterpreter(): Unit = {
     intp = new H2OIMain(settings,out)
     addThunk({
-      intp.bind("sc", sc)
-      intp.bind("h2oContext", h2oContext)
-      intp.bind("sqlContext", new SQLContext(sc))
+      intp.quietBind("sc", sc)
+      intp.quietBind("h2oContext", h2oContext)
+      intp.quietBind("sqlContext", new SQLContext(sc))
     })
     intp.initializeSynchronous()
   }
