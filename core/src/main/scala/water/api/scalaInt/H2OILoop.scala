@@ -4,12 +4,14 @@ import java.io._
 
 import org.apache.spark.SparkContext
 import org.apache.spark.h2o.H2OContext
+import org.apache.spark.repl.SparkIMain
 import org.apache.spark.sql.SQLContext
 import water.api.scalaInt.H2OIMain
 import water.fvec.NFSFileVec
 
 import scala.tools.nsc.interpreter._
 import scala.tools.nsc.{Settings, interpreter}
+import org.apache.spark._
 
 /**
  * Class which creates the correct environment for interpreting scala code in the H2O environment and is used
@@ -32,11 +34,15 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, outWriter: Stri
 
   }
 
+
+
   def runCode(code: String): String = {
     import java.io.{BufferedReader, StringReader}
     // set the input stream
     val input = new BufferedReader(new StringReader(code))
     in = SimpleReader(input, out, false)
+    postInitialization()
+    loadFiles(settings)
     // redirect output from console to our own stream
     scala.Console.withOut(printStream) {
       try loop()
@@ -49,10 +55,11 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, outWriter: Stri
   }
   override def createInterpreter(): Unit = {
     intp = new H2OIMain(settings,out)
-    intp.quietBind("sc", sc)
-    intp.quietBind("h2oContext", h2oContext)
-    intp.quietBind("sqlContext", new SQLContext(sc))
-    intp.quietImport("org.apache.spark.h2o._", "org.apache.spark._")
+    addThunk({
+      intp.bind("sc", sc)
+      intp.bind("h2oContext", h2oContext)
+      intp.bind("sqlContext", new SQLContext(sc))
+    })
     intp.initializeSynchronous()
   }
 

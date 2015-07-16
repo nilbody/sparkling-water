@@ -5,14 +5,21 @@ import scala.tools.nsc.interpreter.{IMain, JPrintWriter}
 import scala.tools.nsc.{Settings, interpreter}
 
 class H2OIMain(settings: Settings, out: JPrintWriter) extends IMain(settings,out){
-  var lastResult: String = interpreter.IR.Success.toString
+
+
+  private var _lastResult: interpreter.IR.Result = interpreter.IR.Success
   override def interpret(line: String, synthetic: Boolean): Result = {
     val result = super.interpret(line, synthetic)
     // ensures that result incomplete or error remains to the end
-    if(lastResult.equals(interpreter.IR.Success.toString)) {
-      lastResult = result.toString
+    if(_lastResult == interpreter.IR.Success) {
+      _lastResult = result
     }
     result
   }
 
+  def lastResult(): String ={
+    val result = _lastResult
+    _lastResult = interpreter.IR.Success
+    result.toString
+  }
 }
