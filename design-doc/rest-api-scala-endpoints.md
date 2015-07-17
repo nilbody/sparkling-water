@@ -17,7 +17,7 @@ curl -X DELETE http://192.168.0.10:54321/3/scalaint/512ef484-e21a-48f9-979e-2879
 ### get all active sessions
 curl http://192.168.0.10:54321/3/scalaint
 
-### try to interpret the code, result is incomplete code
+### try to interpret the incomplete code, status is error
 curl --data-urlencode code='sc.' http://192.168.0.10:54321/3/scalaint/c3e5ea38-0b7e-4136-9ba3-21615ea2d298
 
 ### try to interpret the code, status is error (function does not exist)
