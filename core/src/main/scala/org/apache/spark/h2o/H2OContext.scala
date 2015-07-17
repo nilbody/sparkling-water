@@ -25,7 +25,10 @@ import org.apache.spark.sql.execution.LogicalRDD
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import water._
+import water.api.DataFrame2H2OFrame.DataFrame2H2OFrameHandler
+import water.api.RDDs.RDDsHandler
 import water.api._
+import water.api.scalaInt.ScalaCodeHandler
 import water.fvec.Vec
 import water.parser.ValueString
 
@@ -149,12 +152,12 @@ class H2OContext (@transient val sparkContext: SparkContext) extends {
                               executors)
       logDebug(s"Arguments used for launching h2o nodes: ${h2oClientArgs.mkString(" ")}")
       H2OClientApp.main(h2oClientArgs)
-      H2OContext.registerClientWebAPI(sparkContext)
+      H2OContext.registerClientWebAPI(sparkContext,this)
       H2O.finalizeRegistration()
       H2O.waitForCloudSize(executors.length, cloudTimeout)
     } else {
       logTrace("Sparkling H2O - LOCAL mode")
-      H2OContext.registerClientWebAPI(sparkContext)
+      H2OContext.registerClientWebAPI(sparkContext,this)
       // Since LocalBackend does not wait for initialization (yet)
       H2O.waitForCloudSize(1, cloudTimeout)
     }
@@ -629,5 +632,4 @@ object H2OContext extends Logging {
       classOf[ScalaCodeHandler],"destroySession",
       null,Array("session_id"),"Return session id for communication with scala interpreter",hfactoryCode);
   }
-}
 }
