@@ -71,6 +71,5 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, outWriter: Stri
     settings.embeddedDefaults[H2OContext]
     // synchronous calls
     settings.Yreplsync.value = true
-    settings.verbose.value = true
   }
 }
