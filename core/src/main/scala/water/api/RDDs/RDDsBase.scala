@@ -1,4 +1,6 @@
-package water.api
+package water.api.RDDs
+
+import water.api.{API, Schema}
 
 /**
  * Generic implementation endpoint for all RDD queries.

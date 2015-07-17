@@ -5,6 +5,7 @@ import org.apache.spark.h2o.util.SharedSparkTestContext
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
+import water.api.RDDs.{RDDsHandler, RDDsV3}
 
 /**
  * Test method of RDDsHandler.

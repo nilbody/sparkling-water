@@ -17,8 +17,8 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
 
   val intrPoolSize = 3
   val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OILoop]
-  var mapIntr = new TrieMap[String, (H2OILoop, Long)]
   val timeout = 300000 // 5 minutes in milliseconds
+  var mapIntr = new TrieMap[String, (H2OILoop, Long)]
   initializeHandler()
 
   def interpret(version: Int, s: ScalaCodeV3): ScalaCodeV3 = {
@@ -52,18 +52,6 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
     s
   }
 
-  def destroySession(version: Int, s: ScalaMsgV3): ScalaMsgV3 = {
-    mapIntr(s.session_id)._1.close()
-    mapIntr -= s.session_id
-    s.msg = "Session closed"
-    s
-  }
-
-  def getSessions(version: Int, s: ScalaSessionsV3): ScalaSessionsV3 = {
-    s.sessions = mapIntr.keys.toArray
-    s
-  }
-
   def getInterpreter(): H2OILoop = {
     this.synchronized {
       if (!freeInterpreters.isEmpty) {
@@ -81,10 +69,16 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
     }
   }
 
-  def initializePool(): Unit = {
-    for (i <- 0 until intrPoolSize) {
-      freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc, h2oContext))
-    }
+  def destroySession(version: Int, s: ScalaMsgV3): ScalaMsgV3 = {
+    mapIntr(s.session_id)._1.close()
+    mapIntr -= s.session_id
+    s.msg = "Session closed"
+    s
+  }
+
+  def getSessions(version: Int, s: ScalaSessionsV3): ScalaSessionsV3 = {
+    s.sessions = mapIntr.keys.toArray
+    s
   }
 
   def initializeHandler(): Unit = {
@@ -104,6 +98,12 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
     })
     checkThread.start()
   }
+
+  def initializePool(): Unit = {
+    for (i <- 0 until intrPoolSize) {
+      freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc, h2oContext))
+    }
+  }
 }
 
 object ScalaCodeHandler {
@@ -116,7 +116,7 @@ object ScalaCodeHandler {
 private[api] class IcedCode(val session_id: String, val code: String) extends Iced[IcedCode] {
 
   def this() = this("", "") // initialize with empty values, this is used by the createImpl method in the
-  //RequestServer, as it calls constructor without arguments
+  //RequestServer, as it calls constructor without any arguments
 }
 
 private[api] class IcedSessions extends Iced[IcedSessions] {}

@@ -1,6 +1,6 @@
-package water.api
+package water.api.RDDs
 
-import org.apache.spark.rdd.RDD
+import water.api.{API, Schema}
 
 /**
  * Endpoint representing single RDD.

@@ -1,6 +1,4 @@
-package water.api
-
-import org.apache.spark.rdd.RDD
+package water.api.RDDs
 
 /**
  * Schema for /3/RDDs endopoint
