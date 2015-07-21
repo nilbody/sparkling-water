@@ -4,7 +4,6 @@ package water.api.scalaInt;
 import water.api.API;
 import water.api.Schema;
 
-
 /**
  * Schema used for representing scala code
  */

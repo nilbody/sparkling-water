@@ -1,11 +1,10 @@
 package water.api.DataFrame2H2OFrame
 
 import org.apache.spark.SparkContext
-import org.apache.spark.h2o.H2OContext
+import org.apache.spark.h2o.{H2OFrame, H2OContext}
 import org.apache.spark.sql.SQLContext
-import water.api.Handler
-import water.fvec.H2OFrame
 import water.{DKV, Iced}
+import water.api.Handler
 
 /**
  * Handles transformation between DataFrame and H2OFrame based on the request

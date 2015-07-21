@@ -40,12 +40,15 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, outWriter: Stri
 
   override def createInterpreter(): Unit = {
     super.createInterpreter()
-    addThunk({
-      intp.quietImport("org.apache.spark.h2o._", "org.apache.spark.rdd._", "org.apache.spark._")
-      intp.quietBind("sc", sc)
-      intp.quietBind("h2oContext", h2oContext)
-      intp.quietBind("sqlContext", new SQLContext(sc))
-    })
+    intp.quietImport("org.apache.spark.h2o._",
+      "org.apache.spark.rdd._",
+      "org.apache.spark._",
+      "org.apache.spark.sql.functions._",
+      "import sqlContext.implicits._"
+    )
+    intp.quietBind("sc", sc)
+    intp.quietBind("h2oContext",h2oContext)
+    intp.quietBind("sqlContext", new SQLContext(sc))
     intp.initializeSynchronous()
     postInitialization()
     loadFiles(settings)
@@ -71,5 +74,13 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, outWriter: Stri
     settings.embeddedDefaults[H2OContext]
     // synchronous calls
     settings.Yreplsync.value = true
+
+    // add jars to the interpreter ( needed for the hadoop )
+    for (jar <- sc.jars){
+      settings.classpath.append(jar)
+    }
+    for (jar <- sc.jars){
+      settings.bootclasspath.append(jar)
+    }
   }
 }

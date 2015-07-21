@@ -12,7 +12,7 @@ object RESTTest extends SparkContextSupport {
 
     val conf: SparkConf = configure("Sparkling Water: REST Test")
     // Create SparkContext to execute application on Spark cluster
-    val sc = new SparkContext(conf)
+    val sc = new SparkContext("local","REST TEST",conf)
     val h2oContext = new H2OContext(sc).start()
 
     // Infinite wait

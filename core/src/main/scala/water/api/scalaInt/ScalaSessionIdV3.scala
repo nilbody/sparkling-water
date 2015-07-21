@@ -1,6 +1,6 @@
 package water.api.scalaInt
 
-import water.api.{Schema, API}
+import water.api.{API, Schema}
 
 /**
  * Schema used for representing session id

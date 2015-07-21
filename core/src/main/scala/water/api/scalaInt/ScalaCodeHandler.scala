@@ -121,8 +121,8 @@ private[api] class IcedCode(val session_id: String, val code: String) extends Ic
 
 private[api] class IcedSessions extends Iced[IcedSessions] {}
 
-private[api] class IcedMsg(val session_id: String, val msg: String) extends Iced[IcedMsg] {
-  def this() = this("", "")
+private[api] class IcedMsg(val session_id: String) extends Iced[IcedMsg] {
+  def this() = this("")
 }
 
 private[api] class IcedSessionId extends Iced[IcedSessionId] {}
