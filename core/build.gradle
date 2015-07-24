@@ -26,6 +26,13 @@ dependencies {
   compile "org.apache.spark:spark-sql_${scalaBinaryVersion}:${sparkVersion}"
   // - MLLib component
   compile "org.apache.spark:spark-mllib_${scalaBinaryVersion}:${sparkVersion}"
+  // - needed for repl http server
+  compile "org.eclipse.jetty:jetty-server:8.1.14.v20131031"
+  compile "org.eclipse.jetty:jetty-plus:8.1.14.v20131031"
+  compile "org.eclipse.jetty:jetty-util:8.1.14.v20131031"
+  compile "org.eclipse.jetty:jetty-http:8.1.14.v20131031"
+  // - Spark REPL
+  compile "org.apache.spark:spark-repl_${scalaBinaryVersion}:${sparkVersion}"
 
   // Add joda optional convert library which is required in Scala environment
   compile "org.joda:joda-convert:1.7"

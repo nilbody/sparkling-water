@@ -4,6 +4,7 @@ import java.util.UUID
 
 import org.apache.spark.SparkContext
 import org.apache.spark.h2o.H2OContext
+import org.apache.spark.repl.H2OILoop
 import water.Iced
 import water.api.Handler
 
@@ -15,7 +16,7 @@ import scala.compat.Platform
  */
 class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends Handler {
 
-  val intrPoolSize = 3
+  val intrPoolSize = 1 // set to more after development
   val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OILoop]
   val timeout = 300000 // 5 minutes in milliseconds
   var mapIntr = new TrieMap[String, (H2OILoop, Long)]
@@ -70,7 +71,7 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
   }
 
   def destroySession(version: Int, s: ScalaMsgV3): ScalaMsgV3 = {
-    mapIntr(s.session_id)._1.close()
+    mapIntr(s.session_id)._1.closeInterpreter()
     mapIntr -= s.session_id
     s.msg = "Session closed"
     s

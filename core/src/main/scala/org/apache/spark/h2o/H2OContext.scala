@@ -20,6 +20,7 @@ package org.apache.spark.h2o
 import org.apache.spark._
 import org.apache.spark.h2o.H2OContextUtils._
 import org.apache.spark.rdd.{H2ORDD, H2OSchemaRDD}
+import org.apache.spark.repl.{SparkIMain, SparkILoop}
 import org.apache.spark.sql.catalyst.expressions.AttributeReference
 import org.apache.spark.sql.execution.LogicalRDD
 import org.apache.spark.sql.types._
@@ -44,12 +45,12 @@ import scala.util.Random
  *
  * It provides implicit conversion from RDD -> H2OLikeRDD and back.
  */
-class H2OContext (@transient val sparkContext: SparkContext) extends {
+class H2OContext (@transient val sparkContext: SparkContext,val intp: SparkIMain) extends {
     val sparkConf = sparkContext.getConf
   } with org.apache.spark.Logging
   with H2OConf
   with Serializable {
-
+  def this(sparkContext: SparkContext) = this(sparkContext,null)
   /** Implicit conversion from Spark DataFrame to H2O's DataFrame */
   implicit def asH2OFrame(rdd : DataFrame) : H2OFrame = H2OContext.toH2OFrame(sparkContext, rdd)
 
