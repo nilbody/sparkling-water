@@ -121,7 +121,6 @@ private[repl] trait H2OILoopInit {
   }
 
   def initializeSpark() {
-    H2OMain.interp = this
     intp.beQuietDuring {
       intp.quietBind("sc", sc)
       intp.quietBind("h2oContext",h2oContext)
