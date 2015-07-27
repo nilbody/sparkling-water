@@ -1,3 +1,9 @@
+/**
+ * This code is based on code org.apache.spark.repl.SparkIMain released under Apache 2.0"
+ * Link to Github: https://github.com/apache/spark/blob/master/repl/scala-2.10/src/main/scala/org/apache/spark/repl/SparkIMain.scala
+ * Author:  Paul Phillips
+ */
+
 package org.apache.spark.repl
 
 import org.apache.spark.{Logging, SecurityManager, HttpServer, SparkConf}

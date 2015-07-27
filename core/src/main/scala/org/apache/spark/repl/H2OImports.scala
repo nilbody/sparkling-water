@@ -1,22 +1,19 @@
-// scalastyle:off
-
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Paul Phillips
+/**
+ * This code is based on code org.apache.spark.repl.SparkImports released under Apache 2.0"
+ * Link on Github: https://github.com/apache/spark/blob/master/repl/scala-2.10/src/main/scala/org/apache/spark/repl/SparkImports.scala
+ * Author: Paul Phillips
  */
 
 package org.apache.spark.repl
 
-import scala.tools.nsc._
-import scala.tools.nsc.interpreter._
+import scala.collection.mutable
 
-import scala.collection.{ mutable, immutable }
 
 private[repl] trait H2OImports {
   self: H2OIMain =>
 
   import global._
-  import definitions.{ ScalaPackage, JavaLangPackage, PredefModule }
+  import definitions.{JavaLangPackage, PredefModule, ScalaPackage}
   import memberHandlers._
 
   def isNoImports = settings.noimports.value

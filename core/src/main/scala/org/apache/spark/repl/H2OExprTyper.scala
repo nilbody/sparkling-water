@@ -1,8 +1,7 @@
-// scalastyle:off
-
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Paul Phillips
+/**
+ * This code is based on code org.apache.spark.repl.SparkExprTyper released under Apache 2.0"
+ * Link on Github: https://github.com/apache/spark/blob/master/repl/scala-2.10/src/main/scala/org/apache/spark/repl/SparkExprTyper.scala
+ * Author: Paul Phillips
  */
 
 package org.apache.spark.repl

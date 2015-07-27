@@ -1,22 +1,17 @@
-// scalastyle:off
-
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author Paul Phillips
+/**
+ * This code is based on code org.apache.spark.repl.SparkJLineCompletion released under Apache 2.0"
+ * Link on Github: https://github.com/apache/spark/blob/master/repl/scala-2.10/src/main/scala/org/apache/spark/repl/SparkJLineCompletion.scala
+ * Author: Paul Phillips
  */
 
 package org.apache.spark.repl
 
+import org.apache.spark.Logging
 import org.apache.spark.annotation.DeveloperApi
 
-import scala.tools.nsc._
-import scala.tools.nsc.interpreter._
-
-import scala.tools.jline._
-import scala.tools.jline.console.completer._
-import Completion._
 import scala.collection.mutable.ListBuffer
-import org.apache.spark.Logging
+import scala.tools.nsc.interpreter.Completion._
+import scala.tools.nsc.interpreter._
 
 /**
  * Represents an auto-completion tool for the supplied interpreter that
@@ -31,12 +26,11 @@ class H2OJLineCompletion(val intp: H2OIMain) extends Completion with CompletionO
   // NOTE: Exposed in package as used in quite a few classes
   // NOTE: Must be public to override the global found in CompletionOutput
   val global: intp.global.type = intp.global
-
   import global._
-  import definitions.{ PredefModule, AnyClass, AnyRefClass, ScalaPackage, JavaLangPackage }
-  import rootMirror.{ RootClass, getModuleIfDefined }
+  import definitions.{AnyClass, AnyRefClass, JavaLangPackage, PredefModule, ScalaPackage}
+  import rootMirror.{RootClass, getModuleIfDefined}
   type ExecResult = Any
-  import intp.{ debugging }
+  import intp.debugging
 
   /**
    * Represents the level of verbosity. Increments with consecutive tabs.

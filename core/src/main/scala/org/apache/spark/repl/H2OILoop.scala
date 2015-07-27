@@ -1,7 +1,7 @@
-
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author Alexander Spoon
+/**
+ * This code is based on code org.apache.spark.repl.SparkILoop released under Apache 2.0"
+ * Link on Github: https://github.com/apache/spark/blob/master/repl/scala-2.10/src/main/scala/org/apache/spark/repl/SparkILoop.scala
+ * Author: Alexander Spoon
  */
 
 package org.apache.spark.repl

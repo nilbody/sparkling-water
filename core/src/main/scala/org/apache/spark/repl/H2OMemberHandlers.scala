@@ -1,25 +1,20 @@
-// scalastyle:off
-
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/**
+ * This code is based on code org.apache.spark.repl.SparkMembersHandlers released under Apache 2.0"
+ * Link on Github: https://github.com/apache/spark/blob/master/repl/scala-2.10/src/main/scala/org/apache/spark/repl/SparkMembersHandlers.scala
+ * Author: Martin Odersky
  */
 
 package org.apache.spark.repl
 
-import scala.tools.nsc._
-import scala.tools.nsc.interpreter._
-
-import scala.collection.{ mutable, immutable }
-import scala.PartialFunction.cond
-import scala.reflect.internal.Chars
-import scala.reflect.internal.Flags._
+import scala.collection.mutable
 import scala.language.implicitConversions
+import scala.reflect.internal.Flags._
+import scala.tools.nsc.interpreter._
 
 private[repl] trait H2OMemberHandlers {
   val intp: H2OIMain
 
-  import intp.{ Request, global, naming }
+  import intp.{Request, global, naming}
   import global._
   import naming._
 

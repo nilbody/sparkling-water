@@ -1,8 +1,7 @@
-// scalastyle:off
-
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/**
+ * This code is based on code org.apache.spark.repl.SparkIMain released under Apache 2.0"
+ * Link on Github: https://github.com/apache/spark/blob/master/repl/scala-2.10/src/main/scala/org/apache/spark/repl/SparkIMain.scala
+ * Author:  Martin Odersky
  */
 
 package org.apache.spark.repl
@@ -46,18 +45,6 @@ import scala.util.control.ControlThrowable
 import org.apache.spark._
 import org.apache.spark.util.Utils
 import org.apache.spark.annotation.DeveloperApi
-
-// /** directory to save .class files to */
-// private class ReplVirtualDirectory(out: JPrintWriter) extends VirtualDirectory("((memory))", None) {
-//   private def pp(root: AbstractFile, indentLevel: Int) {
-//     val spaces = "    " * indentLevel
-//     out.println(spaces + root.name)
-//     if (root.isDirectory)
-//       root.toList sortBy (_.name) foreach (x => pp(x, indentLevel + 1))
-//   }
-//   // print the contents hierarchically
-//   def show() = pp(this, 0)
-// }
 
 /** An interpreter for Scala code.
   *
