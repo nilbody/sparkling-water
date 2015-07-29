@@ -49,6 +49,13 @@ trait H2OConf {
   def clientIcedDir = sparkConf.getOption(PROP_CLIENT_ICED_DIR._1)
   def nodeIcedDir   = sparkConf.getOption(PROP_NODE_ICED_DIR._1)
 
+  def jks           = sparkConf.getOption(PROP_JKS._1)
+  def jksPass       = sparkConf.getOption(PROP_JKS_PASS._1)
+  def hashLogin     = sparkConf.getBoolean(PROP_HASH_LOGIN._1, PROP_HASH_LOGIN._2)
+  def ldapLogin     = sparkConf.getBoolean(PROP_LDAP_LOGIN._1, PROP_LDAP_LOGIN._2)
+  def loginConf     = sparkConf.getOption(PROP_LOGIN_CONF._1)
+  def userName      = sparkConf.getOption(PROP_USER_NAME._1)
+
   /* Configuration properties */
 
   /** Configuration property - use flatfile for H2O cloud formation. */
@@ -90,21 +97,45 @@ trait H2OConf {
     * Size of dummy RDD is PROP_CLUSTER_SIZE*PROP_DUMMY_RDD_MUL_FACTOR */
   val PROP_DUMMY_RDD_MUL_FACTOR = ("spark.ext.h2o.dummy.rdd.mul.factor", 10)
 
+  /** Path to Java KeyStore file. */
+  val PROP_JKS = ("spark.ext.h2o.jks", null.asInstanceOf[String])
+  /** Password for Java KeyStore file. */
+  val PROP_JKS_PASS = ("spark.ext.h2o.jks.pass", null.asInstanceOf[String])
+  /** Enable hash login. */
+  val PROP_HASH_LOGIN = ("spark.ext.h2o.hash.login", false)
+  /** Enable LDAP login. */
+  val PROP_LDAP_LOGIN = ("spark.ext.h2o.ldap.login", false)
+  /** Login configuration file. */
+  val PROP_LOGIN_CONF = ("spark.ext.h2o.login.conf", null.asInstanceOf[String])
+  /** Override user name for cluster. */
+  val PROP_USER_NAME = ("spark.ext.h2o.user.name", null.asInstanceOf[String])
+
   /**
    * Produce arguments for H2O node based on this config.
    * @return array of H2O launcher command line arguments
    */
-  def getH2ONodeArgs:Array[String] = (getH2OCommonOptions ++ Seq("-log_level", h2oNodeLogLevel)).toArray
+  def getH2ONodeArgs: Array[String] = (getH2OCommonOptions ++ Seq("-log_level", h2oNodeLogLevel)).toArray
 
   /**
    * Get arguments for H2O client.
    * @return array of H2O client arguments.
    */
-  def getH2OClientArgs:Array[String] = (getH2OCommonOptions
-    ++ Seq("-log_level", h2oClientLogLevel, "-quiet")
-    ++ Seq(("-ice_root", clientIcedDir.getOrElse(null)),
-            ("-port", if (clientWebPort > 0) clientWebPort else null))
-        .filter(_._2 != null).flatMap(x => Seq(x._1, x._2.toString))
+
+  def getH2OClientArgs: Array[String] = (
+    getH2OCommonOptions
+      ++ Seq("-quiet")
+      ++ (if (hashLogin) Seq("-hash_login") else Nil)
+      ++ (if (ldapLogin) Seq("-ldap_login") else Nil)
+      ++ Seq("-log_level", h2oClientLogLevel)
+      ++ Seq("-log_dir", clientLogDir)
+      ++ Seq(
+        ("-ice_root", clientIcedDir.orNull),
+        ("-port", if (clientWebPort > 0) clientWebPort else null),
+        ("-jks", jks.orNull),
+        ("-jks_pass", jksPass.orNull),
+        ("-login_conf", loginConf.orNull),
+        ("-user_name", userName.orNull)
+      ).filter(_._2 != null).flatMap(x => Seq(x._1, x._2.toString))
     ).toArray
 
   private def getH2OCommonOptions:Seq[String] =
@@ -112,12 +143,16 @@ trait H2OConf {
     Seq(
       ("-name", cloudName),
       ("-nthreads", if (nthreads > 0) nthreads else null),
-      ("-network", networkMask.getOrElse(null)),
+      ("-network", networkMask.orNull),
       ("-baseport", basePort))
       .filter(x => x._2 != null)
       .flatMap(x => Seq(x._1, x._2.toString)) ++ // Append single boolean options
       Seq(("-ga_opt_out", disableGA))
         .filter(_._2).map(x => x._1)
+
+  private def clientLogDir: String = {
+    System.getProperty("user.dir") + java.io.File.separator + "h2ologs"
+  }
 
   override def toString: String =
     s"""Sparkling Water configuration:
