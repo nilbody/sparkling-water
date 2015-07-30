@@ -69,8 +69,8 @@ import org.apache.spark.util.Utils
   *  @version 1.2
   */
 @DeveloperApi
-class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext
-                  ) extends AnyRef with LoopCommands with H2OILoopInit with Logging {
+class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: String
+                ) extends AnyRef with LoopCommands with H2OILoopInit with Logging {
   private val in0: Option[BufferedReader] = None
   // NOTE: Exposed in package for testing
   private[repl] var settings: Settings = _
@@ -187,9 +187,8 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext
     }
   }
 
-  class SparkILoopInterpreter extends H2OIMain(sc,h2oContext,settings, out) {
+  class H2OILoopInterpreter extends H2OIMain(sc,h2oContext,sessionID,settings, out) {
     outer =>
-
     override private[repl] lazy val formatting = new Formatting {
       def prompt = H2OILoop.this.prompt
     }
@@ -216,7 +215,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext
     val totalClassPath = addedJars.foldLeft(
       settings.classpath.value)((l, r) => ClassPath.join(l, r))
     this.settings.classpath.value = totalClassPath
-    intp = new SparkILoopInterpreter
+    intp = new H2OILoopInterpreter
   }
 
   /** print a friendly help message */
@@ -982,9 +981,9 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext
 
     loadFiles(settings)
 
-   // for(jar <-sc.addedJars){
-   //   intp.addUrlsToClassPath(new URL(jar._1))
-   // }
+    // for(jar <-sc.addedJars){
+    //   intp.addUrlsToClassPath(new URL(jar._1))
+    // }
   }
   private def process(settings: Settings): Boolean = savingContextLoader {
     if (getMaster() == "yarn-client") System.setProperty("SPARK_YARN_MODE", "true")
@@ -1051,25 +1050,25 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext
   def getH2OContext(): H2OContext = {
     h2oContext
   }
-/*
-  // NOTE: Must be public for visibility
-  @DeveloperApi
-  def createSparkContext(): SparkContext = {
-    val execUri = System.getenv("SPARK_EXECUTOR_URI")
-    val jars = H2OILoop.getAddedJars
-    val conf = new SparkConf()
-      .setMaster(getMaster())
-      .setAppName("Spark shell")
-      .setJars(jars)
-      .set("spark.repl.class.uri", intp.classServerUri)
-    if (execUri != null) {
-      conf.set("spark.executor.uri", execUri)
+  /*
+    // NOTE: Must be public for visibility
+    @DeveloperApi
+    def createSparkContext(): SparkContext = {
+      val execUri = System.getenv("SPARK_EXECUTOR_URI")
+      val jars = H2OILoop.getAddedJars
+      val conf = new SparkConf()
+        .setMaster(getMaster())
+        .setAppName("Spark shell")
+        .setJars(jars)
+        .set("spark.repl.class.uri", intp.classServerUri)
+      if (execUri != null) {
+        conf.set("spark.executor.uri", execUri)
+      }
+      sparkContext = new SparkContext(conf)
+      logInfo("Created spark context..")
+      sparkContext
     }
-    sparkContext = new SparkContext(conf)
-    logInfo("Created spark context..")
-    sparkContext
-  }
-*/
+  */
 
   @DeveloperApi
   def createSQLContext(): SQLContext = {

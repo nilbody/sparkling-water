@@ -16,7 +16,7 @@ import scala.compat.Platform
  */
 class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends Handler {
 
-  val intrPoolSize = 1 // set to more after development
+  val intrPoolSize = 1 // 1 only for development purposes
   val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OILoop]
   val timeout = 300000 // 5 minutes in milliseconds
   var mapIntr = new TrieMap[String, (H2OILoop, Long)]
@@ -38,18 +38,7 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
 
   def initSession(version: Int, s: ScalaSessionIdV3): ScalaSessionIdV3 = {
     val intp = getInterpreter()
-    var done = false
-    var id = UUID.randomUUID().toString // simple solution for now ..
-    do {
-      val previous = mapIntr.putIfAbsent(id, (intp, Platform.currentTime))
-      if (previous == None) {
-        done = true
-      } else {
-        id = UUID.randomUUID().toString
-      }
-    }
-    while (!done)
-    s.session_id = id
+    s.session_id = intp.sessionID
     s
   }
 
@@ -59,13 +48,13 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
         val intp = freeInterpreters.poll()
         new Thread(new Runnable {
           def run(): Unit = {
-            freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc, h2oContext))
+            createInterpreter()
           }
         }).start()
         intp
       } else {
         // pool is empty at the moment and is being filled, return new interpreter without using the pool
-        ScalaCodeHandler.initializeInterpreter(sc, h2oContext)
+        createInterpreter()
       }
     }
   }
@@ -102,14 +91,38 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
 
   def initializePool(): Unit = {
     for (i <- 0 until intrPoolSize) {
-      freeInterpreters.add(ScalaCodeHandler.initializeInterpreter(sc, h2oContext))
+      createInterpreter()
     }
+  }
+
+  def createInterpreter(): H2OILoop = {
+    val id = createUUID()
+    val intp = ScalaCodeHandler.initializeInterpreter(sc, h2oContext,id)
+    freeInterpreters.add(intp)
+    mapIntr.put(id, (intp, Platform.currentTime))
+    intp
+  }
+
+  def createUUID() : String = {
+    var done = false
+    var id = UUID.randomUUID().toString // simple solution for now ..
+    do {
+      if (!mapIntr.contains(id)) {
+        done = true
+      } else {
+        id = UUID.randomUUID().toString
+      }
+    }
+    while (!done)
+    // id is also used as package for generated class names, dashes are not allowed and uuid is generated with dashes
+    id = id.replaceAll("-","_")
+    id
   }
 }
 
 object ScalaCodeHandler {
-  def initializeInterpreter(sparkContext: SparkContext, h2oContext: H2OContext): H2OILoop = {
-    new H2OILoop(sparkContext, h2oContext)
+  def initializeInterpreter(sparkContext: SparkContext, h2oContext: H2OContext, sessionID: String): H2OILoop = {
+    new H2OILoop(sparkContext, h2oContext,sessionID)
   }
 }
 

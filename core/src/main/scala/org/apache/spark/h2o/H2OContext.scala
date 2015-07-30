@@ -45,12 +45,11 @@ import scala.util.Random
  *
  * It provides implicit conversion from RDD -> H2OLikeRDD and back.
  */
-class H2OContext (@transient val sparkContext: SparkContext,val intp: SparkIMain) extends {
+class H2OContext (@transient val sparkContext: SparkContext) extends {
     val sparkConf = sparkContext.getConf
   } with org.apache.spark.Logging
   with H2OConf
   with Serializable {
-  def this(sparkContext: SparkContext) = this(sparkContext,null)
   /** Implicit conversion from Spark DataFrame to H2O's DataFrame */
   implicit def asH2OFrame(rdd : DataFrame) : H2OFrame = H2OContext.toH2OFrame(sparkContext, rdd)
 

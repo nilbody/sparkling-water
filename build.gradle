@@ -86,7 +86,7 @@ configure(subprojects) { project ->
         }
         // JitPack builds GitHub projects on demand and publishes ready-to-use packages. It's here until there is an official release of Reflections library
          maven {
-	  url "https://jitpack.io"
+	        url "https://jitpack.io"
 	    }
         // Should be enabled only in development mode
         if (h2oBuild == '99999') mavenLocal()
@@ -120,7 +120,7 @@ configure(subprojects) { project ->
                         "org.javassist:javassist",
                         "gov.nist.math:jama",
                         "com.google.code.gson:gson",
-                        "com.github.ronmamo:reflections:-SNAPSHOT",
+                        "com.github.MadMan0708:reflections:-SNAPSHOT",
                         "com.google.guava:guava",
                         //"commons-collections:commons-collections",
                         "ai.h2o:google-analytics-java",
