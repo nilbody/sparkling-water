@@ -232,9 +232,10 @@ class H2OIMain(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     Console println msg
   }
 
-  private def _initSources = List(new BatchSourceFile("<init>", "package intp_id_" + sessionID + " \n class $repl_$init { }"))
+  //private def _initSources = List(new BatchSourceFile("<init>", "package intp_id_" + sessionID + " \n class $repl_$init { }"))
 
-  //  private def _initSources = List(new BatchSourceFile("<init>", "class $repl_$init { }"))
+  //private def _initSources = List(new BatchSourceFile("<init>", "class $repl_$init { }"))
+  private def _initSources = List(new BatchSourceFile("<init>", "class $repl_$init { }"))
   private def _initialize() = {
     try {
       // todo. if this crashes, REPL will hang
@@ -1077,7 +1078,7 @@ class H2OIMain(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     private var conditionalWarnings: List[ConditionalWarning] = Nil
 
     val packageName = "intp_id_" + sessionID + "." + FixedSessionNames.lineName + lineId
-    // val packageName =  FixedSessionNames.lineName + lineId
+  //  val packageName =  FixedSessionNames.lineName + lineId
     val readName = FixedSessionNames.readName
     val evalName = FixedSessionNames.evalName
     val printName = FixedSessionNames.printName
@@ -1902,7 +1903,7 @@ class H2OISettings(intp: H2OIMain) extends Logging {
   /** String unwrapping can be disabled if it is causing issues.
     * Settings this to false means you will see Strings like "$iw.$iw.".
     */
-  var unwrapStrings = true
+  var unwrapStrings = false
 
   def deprecation_=(x: Boolean) = {
     val old = intp.settings.deprecation.value

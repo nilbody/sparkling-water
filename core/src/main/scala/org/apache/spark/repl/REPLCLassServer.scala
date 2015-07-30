@@ -26,14 +26,14 @@ object REPLCLassServer extends Logging {
     val rootDir = conf.get("spark.repl.classdir",  tmp)
     Utils.createTempDir(rootDir)
   }
-
+  logInfo("Directory to save. class files to = " + outputDir)
   /**
    * Returns the path to the output directory containing all generated
    * class files that will be served by the REPL class server.
    */
   lazy val getClassOutputDirectory = outputDir
 
-  private val virtualDirectory                              = new PlainFile(outputDir) // "directory" for classfiles
+  //private val virtualDirectory                              = new PlainFile(outputDir) // "directory" for classfiles
   /** Jetty server that will serve our classes to worker nodes */
   private val classServerPort                               = conf.getInt("spark.replClassServer.port", 0)
   private val classServer                                   = new HttpServer(conf, outputDir, new SecurityManager(conf), classServerPort, "HTTP class server")

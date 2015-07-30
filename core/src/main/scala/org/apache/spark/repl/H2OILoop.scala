@@ -1112,7 +1112,6 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     settings.embeddedDefaults[H2OContext]
     // synchronous calls
     settings.Yreplsync.value = true
-
     // add jars to the interpreter ( needed for the hadoop )
     for (jar <- sc.jars){
       settings.classpath.append(jar)
