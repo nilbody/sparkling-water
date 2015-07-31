@@ -68,29 +68,18 @@ import scala.util.control.ControlThrowable
   * @author Lex Spoon
   */
 @DeveloperApi
- class H2OIMain(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: String,
-               initialSettings: Settings,
-               val out: JPrintWriter,
+ class H2OIMain(initialSettings: Settings,
+                val out: JPrintWriter,
+                val sessionID: String = "sparkling_shell_interpreter",
                propagateExceptions: Boolean = false)
   extends H2OImports with Logging {
   imain =>
 
-  private val conf = sc.getConf
   private val SPARK_DEBUG_REPL: Boolean = (System.getenv("SPARK_DEBUG_REPL") == "1")
-  /** Local directory to save .class files too */
 
+  /** Local directory to save .class files too */
   private lazy val outputDir = {
-    if (Main.interp == null) {
-      // we are not running on top of sparkling shell, we need to create our own repl class server
-      /*   val dir = new File(REPLCLassServer.getClassOutputDirectory, "intp_id_"+sessionID)
-         dir.mkdir()
-         Utils.registerShutdownDeleteDir(dir)
-         dir*/
-      // we are not running on top of sparkling shell, we need to create our own repl class server
-      REPLCLassServer.getClassOutputDirectory
-    } else {
-      Main.interp.intp.getClassOutputDirectory
-    }
+   IntpUtils.getClassOutputDir
   }
 
   if (SPARK_DEBUG_REPL) {
@@ -107,6 +96,7 @@ import scala.util.control.ControlThrowable
   private val virtualDirectory = new PlainFile(outputDir)
 
   private var currentSettings: Settings = initialSettings
+
   private var printResults = true
   // whether to print result lines
   private var totalSilence = false
@@ -126,12 +116,7 @@ import scala.util.control.ControlThrowable
    */
   @DeveloperApi
   def classServerUri = {
-    if (Main.interp == null) {
-      // we are not running on top of sparkling shell, we need to create our own repl class server
-      REPLCLassServer.classServerUri
-    } else {
-      Main.interp.intp.classServerUri
-    }
+   IntpUtils.classServerUri
   }
 
   /** We're going to go to some trouble to initialize the compiler asynchronously.
@@ -141,17 +126,8 @@ import scala.util.control.ControlThrowable
     * use a lazy val to ensure that any attempt to use the compiler object waits
     * on the future.
     */
-  private var _classLoader: AbstractFileClassLoader = null
-  // active classloader
-  private val _compiler: Global = newCompiler(settings, reporter)
-
   // our private compiler
-
-  private trait ExposeAddUrl extends URLClassLoader {
-    def addNewUrl(url: URL) = this.addURL(url)
-  }
-
-  private var _runtimeClassLoader: URLClassLoader with ExposeAddUrl = null // wrapper exposing addURL
+  private val _compiler: Global = newCompiler(settings, reporter)
 
   private val nextReqId = {
     var counter = 0
@@ -220,10 +196,9 @@ import scala.util.control.ControlThrowable
     Console println msg
   }
 
-  //private def _initSources = List(new BatchSourceFile("<init>", "package intp_id_" + sessionID + " \n class $repl_$init { }"))
+  private def _initSources = List(new BatchSourceFile("<init>", "package intp_id_" + sessionID + " \n class $repl_$init { }"))
 
   //private def _initSources = List(new BatchSourceFile("<init>", "class $repl_$init { }"))
-  private def _initSources = List(new BatchSourceFile("<init>", "class $repl_$init { }"))
   private def _initialize() = {
     try {
       // todo. if this crashes, REPL will hang
@@ -439,7 +414,7 @@ import scala.util.control.ControlThrowable
   @DeveloperApi
   def addUrlsToClassPath(urls: URL*): Unit = {
     new Run // Needed to force initialization of "something" to correctly load Scala classes from jars
-    urls.foreach(_runtimeClassLoader.addNewUrl) // Add jars/classes to runtime for execution
+    urls.foreach(IntpUtils.runtimeClassLoader.addNewUrl) // Add jars/classes to runtime for execution
     updateCompilerClassPath(urls: _*) // Add jars/classes to compile time for compiling
   }
 
@@ -506,21 +481,19 @@ import scala.util.control.ControlThrowable
   definitions.
   */
   private def resetClassLoader() = {
-    logDebug("Setting new classloader: was " + _classLoader)
-    _classLoader = null
+    logDebug("Setting new classloader: was " + IntpUtils.REPLCLassLoader)
+    IntpUtils.resetREPLCLassLoader()
     ensureClassLoader()
   }
 
   private final def ensureClassLoader() {
-    if (_classLoader == null)
-      _classLoader = makeClassLoader()
-    sc.env.serializer.setDefaultClassLoader(_classLoader)
+       IntpUtils.ensureREPLClassLoader(makeClassLoader())
   }
 
   // NOTE: Exposed to repl package since used by SparkILoop
   private[repl] def classLoader: AbstractFileClassLoader = {
     ensureClassLoader()
-    _classLoader
+    IntpUtils.REPLCLassLoader
   }
 
   private class TranslatingClassLoader(parent: ClassLoader) extends AbstractFileClassLoader(virtualDirectory, parent) {
@@ -543,8 +516,8 @@ import scala.util.control.ControlThrowable
     new TranslatingClassLoader(parentClassLoader match {
       case null => ScalaClassLoader fromURLs compilerClasspath
       case p =>
-        _runtimeClassLoader = new URLClassLoader(compilerClasspath, p) with ExposeAddUrl
-        _runtimeClassLoader
+        IntpUtils.ensureRuntimeCLassLoader(new URLClassLoader(compilerClasspath, p) with ExposeAddUrl)
+        IntpUtils.runtimeClassLoader
     })
 
   private def getInterpreterClassLoader() = classLoader
@@ -1067,7 +1040,7 @@ import scala.util.control.ControlThrowable
     private var conditionalWarnings: List[ConditionalWarning] = Nil
 
     val packageName = "intp_id_" + sessionID + "." + FixedSessionNames.lineName + lineId
-  //  val packageName =  FixedSessionNames.lineName + lineId
+    //  val packageName =  FixedSessionNames.lineName + lineId
     val readName = FixedSessionNames.readName
     val evalName = FixedSessionNames.evalName
     val printName = FixedSessionNames.printName

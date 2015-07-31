@@ -79,6 +79,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   @deprecated("Use `intp` instead.", "2.9.0") def interpreter = intp
   @deprecated("Use `intp` instead.", "2.9.0") def interpreter_= (i: H2OIMain): Unit = intp = i
 
+
   /** Having inherited the difficult "var-ness" of the repl instance,
     *  I'm trying to work around it by moving operations into a class from
     *  which it will appear a stable prefix.
@@ -1050,7 +1051,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
         .setMaster(getMaster())
         .setAppName("Spark shell")
         .setJars(jars)
-        .set("spark.repl.class.uri", intp.classServerUri)
+        .set("spark.repl.class.uri", REPLClassServer.classServerUri)
       if (execUri != null) {
         conf.set("spark.executor.uri", execUri)
       }

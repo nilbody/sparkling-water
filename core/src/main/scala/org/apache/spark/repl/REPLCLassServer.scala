@@ -15,6 +15,7 @@ import org.apache.spark.{HttpServer, Logging, SecurityManager, SparkConf}
  */
 object REPLCLassServer extends Logging {
 
+  private var started = false
   private val conf = new SparkConf()
 
   private val SPARK_DEBUG_REPL: Boolean = (System.getenv("SPARK_DEBUG_REPL") == "1")
@@ -24,7 +25,7 @@ object REPLCLassServer extends Logging {
     val rootDir = conf.get("spark.repl.classdir",  tmp)
     Utils.createTempDir(rootDir)
   }
-  logInfo("Directory to save. class files to = " + outputDir)
+  logInfo("Directory to save .class files to = " + outputDir)
   /**
    * Returns the path to the output directory containing all generated
    * class files that will be served by the REPL class server.
@@ -35,11 +36,18 @@ object REPLCLassServer extends Logging {
   /** Jetty server that will serve our classes to worker nodes */
   private val classServerPort                               = conf.getInt("spark.replClassServer.port", 0)
   private val classServer                                   = new HttpServer(conf, outputDir, new SecurityManager(conf), classServerPort, "HTTP class server")
-  classServer.start()
-  logInfo("Class server started, URI = " + classServerUri)
-  def classServerUri = classServer.uri
 
+  def classServerUri = classServer.uri
+  def start() ={
+    classServer.start()
+    started = true
+    logInfo("Class server started, URI = " + classServerUri)
+  }
   def close() {
     classServer.stop()
+  }
+
+  def isRunning() = {
+    started
   }
 }
