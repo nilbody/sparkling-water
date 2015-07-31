@@ -69,7 +69,7 @@ import org.apache.spark.util.Utils
   *  @version 1.2
   */
 @DeveloperApi
-class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: String
+class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: String  = "sparkling_shell_interpreter"
                 ) extends AnyRef with LoopCommands with H2OILoopInit with Logging {
   private val in0: Option[BufferedReader] = None
   // NOTE: Exposed in package for testing
@@ -87,7 +87,11 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   private def onIntp[T](f: H2OIMain => T): T = f(intp)
 
   private val outWriter = new StringWriter()
-  override protected def out: JPrintWriter = new JPrintWriter(outWriter)
+  override protected def out: JPrintWriter = if(sc == null){
+    // this loop handles sparkling shell, sparcontext wasn't so far created and we want the output everything to the console
+    new JPrintWriter(scala.Console.out, true)}else{
+    new JPrintWriter(outWriter)
+  }
   private var in: InteractiveReader = SimpleReader(new BufferedReader(new StringReader("")), out, false)   // the input stream from which commands come
 
   class IMainOps[T <: H2OIMain](val intp: T) {
@@ -132,6 +136,10 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     }
   }
 
+  // NOTE: Must be public for visibility
+  @DeveloperApi
+  var sparkContext: SparkContext = _
+  var sqlContext: SQLContext = _
 
   override def echoCommandMessage(msg: String) {
     intp.reporter printMessage msg
@@ -184,7 +192,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     }
   }
 
-  class H2OILoopInterpreter extends H2OIMain(sc,h2oContext,sessionID,settings, out) {
+  class H2OILoopInterpreter extends H2OIMain(settings,out,sessionID) {
     outer =>
     override private[repl] lazy val formatting = new Formatting {
       def prompt = H2OILoop.this.prompt
@@ -1041,17 +1049,17 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   def getH2OContext(): H2OContext = {
     h2oContext
   }
-  /*
+
     // NOTE: Must be public for visibility
     @DeveloperApi
     def createSparkContext(): SparkContext = {
       val execUri = System.getenv("SPARK_EXECUTOR_URI")
-      val jars = H2OILoop.getAddedJars
+      val jars = SparkILoop.getAddedJars
       val conf = new SparkConf()
         .setMaster(getMaster())
         .setAppName("Spark shell")
         .setJars(jars)
-        .set("spark.repl.class.uri", REPLClassServer.classServerUri)
+        .set("spark.repl.class.uri", REPLCLassServer.classServerUri)
       if (execUri != null) {
         conf.set("spark.executor.uri", execUri)
       }
@@ -1059,9 +1067,9 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
       logInfo("Created spark context..")
       sparkContext
     }
-  */
 
-/*  @DeveloperApi
+
+  @DeveloperApi
   def createSQLContext(): SQLContext = {
     val name = "org.apache.spark.sql.hive.HiveContext"
     val loader = Utils.getContextOrSparkClassLoader
@@ -1076,7 +1084,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
         logInfo("Created sql context..")
     }
     sqlContext
-  }*/
+  }
 
   private def getMaster(): String = {
     sc.master

@@ -70,7 +70,7 @@ import scala.util.control.ControlThrowable
 @DeveloperApi
  class H2OIMain(initialSettings: Settings,
                 val out: JPrintWriter,
-                val sessionID: String = "sparkling_shell_interpreter",
+                val sessionID: String,
                propagateExceptions: Boolean = false)
   extends H2OImports with Logging {
   imain =>

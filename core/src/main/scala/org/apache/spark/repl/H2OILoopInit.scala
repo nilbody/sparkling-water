@@ -118,9 +118,27 @@ private[repl] trait H2OILoopInit {
 
   def initializeSpark() {
     intp.beQuietDuring {
-      intp.quietBind("sc", sc)
-      intp.quietBind("h2oContext",h2oContext)
-      intp.quietBind("sqlContext",new SQLContext(sc))
+      if(sc == null){
+        command("""
+         @transient val sc = {
+           val _sc = org.apache.spark.repl.Main.interp.createSparkContext()
+           println("Spark context available as sc.")
+           _sc
+         }
+                """)
+        command("""
+         @transient val sqlContext = {
+           val _sqlContext = org.apache.spark.repl.Main.interp.createSQLContext()
+           println("SQL context available as sqlContext.")
+           _sqlContext
+         }
+                """)
+      }
+      else{
+        intp.quietBind("sc", sc)
+        intp.quietBind("h2oContext",h2oContext)
+        intp.quietBind("sqlContext",new SQLContext(sc))
+      }
       command("import org.apache.spark.SparkContext._")
       command("import sqlContext.implicits._")
       command("import sqlContext.sql")

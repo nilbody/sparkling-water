@@ -20,14 +20,14 @@ package org.apache.spark.repl
 import scala.collection.mutable.Set
 
 object H2OMain {
-  private var _interp: ShellH2OILoop = _
+  private var _interp: H2OILoop = _
 
   def interp = _interp
 
-  def interp_=(i: ShellH2OILoop) { _interp = i }
+  def interp_=(i: H2OILoop) { _interp = i }
 
   def main(args: Array[String]) {
-    _interp = new ShellH2OILoop
+    _interp = new H2OILoop(null,null)
     _interp.process(args)
   }
 }
