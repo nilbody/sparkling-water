@@ -6,16 +6,13 @@
 
 package org.apache.spark.repl
 
+import org.apache.spark.SPARK_VERSION
+import org.apache.spark.repl.H2OILoop
 import org.apache.spark.sql.SQLContext
 
 import scala.tools.nsc._
 import scala.tools.nsc.interpreter._
-
-import scala.reflect.internal.util.Position
-import scala.util.control.Exception.ignoring
 import scala.tools.nsc.util.stackTraceString
-
-import org.apache.spark.SPARK_VERSION
 
 /**
  *  Machinery for the asynchronous initialization of the repl.

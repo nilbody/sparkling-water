@@ -131,10 +131,6 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     }
   }
 
-  // NOTE: Must be public for visibility
-  @DeveloperApi
-  var sparkContext: SparkContext = _
-  var sqlContext: SQLContext = _
 
   override def echoCommandMessage(msg: String) {
     intp.reporter printMessage msg
@@ -181,7 +177,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   /** Close the interpreter and set the var to null. */
   def closeInterpreter() {
     if (intp ne null) {
-      sparkCleanUp()
+     // sparkCleanUp()
       intp.close()
       intp = null
     }
@@ -755,7 +751,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
         addedClasspath = ClassPath.join(addedClasspath, f.path)
         totalClasspath = ClassPath.join(settings.classpath.value, addedClasspath)
         intp.addUrlsToClassPath(f.toURI.toURL)
-        sparkContext.addJar(f.toURI.toURL.getPath)
+        sc.addJar(f.toURI.toURL.getPath)
       }
     }
   }
@@ -765,7 +761,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     if (f.exists) {
       addedClasspath = ClassPath.join(addedClasspath, f.path)
       intp.addUrlsToClassPath(f.toURI.toURL)
-      sparkContext.addJar(f.toURI.toURL.getPath)
+     sc.addJar(f.toURI.toURL.getPath)
       echo("Added '%s'.  Your new classpath is:\n\"%s\"".format(f.path, intp.global.classPath.asClasspathString))
     }
     else echo("The path '" + f + "' doesn't seem to exist.")
@@ -843,7 +839,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
       apply(Iterator(start) ++ readWhile(_.trim != PromptString.trim))
     }
   }
-  import paste.{ ContinueString, PromptString }
+  import paste.{ContinueString, PromptString}
 
   /** Interpret expressions starting with the first line.
     * Read lines until a complete compilation unit is available
@@ -953,9 +949,6 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     // we can get at it in generated code.
     addThunk(intp.quietBind(NamedParam[H2OIMain]("$intp", intp)(tagOfH2OIMain, classTag[H2OIMain])))
     addThunk({
-      import scala.tools.nsc.io._
-      import Properties.userHome
-      import scala.compat.Platform.EOL
       val autorun = replProps.replAutorunCode.option flatMap (f => io.File(f).safeSlurp())
       if (autorun.isDefined) intp.quietRun(autorun.get)
     })
@@ -1001,14 +994,11 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
           case x                   => x
         }
     }
-    lazy val tagOfH2OIMain = tagOfStaticClass[org.apache.spark.repl.H2OIMain]
+    lazy val tagOfH2OIMain = tagOfStaticClass[H2OIMain]
     // Bind intp somewhere out of the regular namespace where
     // we can get at it in generated code.
     addThunk(intp.quietBind(NamedParam[H2OIMain]("$intp", intp)(tagOfH2OIMain, classTag[H2OIMain])))
     addThunk({
-      import scala.tools.nsc.io._
-      import Properties.userHome
-      import scala.compat.Platform.EOL
       val autorun = replProps.replAutorunCode.option flatMap (f => io.File(f).safeSlurp())
       if (autorun.isDefined) intp.quietRun(autorun.get)
     })
@@ -1070,7 +1060,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     }
   */
 
-  @DeveloperApi
+/*  @DeveloperApi
   def createSQLContext(): SQLContext = {
     val name = "org.apache.spark.sql.hive.HiveContext"
     val loader = Utils.getContextOrSparkClassLoader
@@ -1085,7 +1075,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
         logInfo("Created sql context..")
     }
     sqlContext
-  }
+  }*/
 
   private def getMaster(): String = {
     sc.master

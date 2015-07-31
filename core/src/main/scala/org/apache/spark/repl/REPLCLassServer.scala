@@ -6,10 +6,8 @@
 
 package org.apache.spark.repl
 
-import org.apache.spark.{Logging, SecurityManager, HttpServer, SparkConf}
 import org.apache.spark.util.Utils
-
-import scala.reflect.io.PlainFile
+import org.apache.spark.{HttpServer, Logging, SecurityManager, SparkConf}
 
 
 /**

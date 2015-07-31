@@ -7,45 +7,33 @@
 package org.apache.spark.repl
 
 import java.io.File
-import java.util.UUID
-
-import org.apache.spark.h2o.H2OContext
-import org.reflections.Reflections
-
-import scala.reflect.io.PlainFile
-import scala.tools.nsc._
-import scala.tools.nsc.backend.JavaPlatform
-import scala.tools.nsc.interpreter._
-
-import Predef.{println => _, _}
-import scala.tools.nsc.io
-import scala.tools.nsc.util
-import scala.tools.nsc.util.{MergedClassPath, stringFromWriter, ScalaClassLoader, stackTraceString}
-import scala.reflect.internal.util._
 import java.net.URL
-import scala.sys.BooleanProp
-import tools.nsc.io.{AbstractFile, PlainFile, VirtualDirectory}
-
-import reporters._
-import symtab.Flags
-import scala.reflect.internal.Names
-import scala.tools.util.PathResolver
-import ScalaClassLoader.URLClassLoader
-import scala.tools.nsc.util.Exceptional.unwrap
-import scala.collection.{mutable, immutable}
-import scala.util.control.Exception.{ultimately}
-import SparkIMain._
 import java.util.concurrent.Future
-import typechecker.Analyzer
-import scala.language.implicitConversions
-import scala.reflect.runtime.{universe => ru}
-import scala.reflect.{ClassTag, classTag}
-import scala.tools.reflect.StdRuntimeTags._
-import scala.util.control.ControlThrowable
 
 import org.apache.spark._
-import org.apache.spark.util.Utils
 import org.apache.spark.annotation.DeveloperApi
+import org.apache.spark.h2o.H2OContext
+import org.apache.spark.repl.H2OIMain.CodeAssembler
+import org.apache.spark.repl.H2OMemberHandlers
+
+import scala.Predef.{println => _, _}
+import scala.collection.mutable
+import scala.language.implicitConversions
+import scala.reflect.internal.util._
+import scala.reflect.io.{AbstractFile, PlainFile}
+import scala.reflect.runtime.{universe => ru}
+import scala.reflect.{ClassTag, classTag}
+import scala.sys.BooleanProp
+import scala.tools.nsc.backend.JavaPlatform
+import scala.tools.nsc.interpreter._
+import scala.tools.nsc.reporters._
+import scala.tools.nsc.util.Exceptional.unwrap
+import scala.tools.nsc.util.ScalaClassLoader.URLClassLoader
+import scala.tools.nsc.util.{MergedClassPath, ScalaClassLoader, stackTraceString, stringFromWriter}
+import scala.tools.nsc.{io, util, _}
+import scala.tools.reflect.StdRuntimeTags._
+import scala.tools.util.PathResolver
+import scala.util.control.ControlThrowable
 
 /** An interpreter for Scala code.
   *
@@ -80,7 +68,7 @@ import org.apache.spark.annotation.DeveloperApi
   * @author Lex Spoon
   */
 @DeveloperApi
-class H2OIMain(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: String,
+ class H2OIMain(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: String,
                initialSettings: Settings,
                val out: JPrintWriter,
                propagateExceptions: Boolean = false)
@@ -299,8 +287,8 @@ class H2OIMain(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   private lazy val compiler: global.type = global
 
   import global._
-  import definitions.{ScalaPackage, JavaLangPackage, termMember, typeMember}
-  import rootMirror.{RootClass, getClassIfDefined, getModuleIfDefined, getRequiredModule, getRequiredClass}
+  import definitions.termMember
+  import rootMirror.{RootClass, getClassIfDefined, getModuleIfDefined}
 
   private implicit class ReplTypeOps(tp: Type) {
     def orElse(other: => Type): Type = if (tp ne NoType) tp else other
@@ -526,6 +514,7 @@ class H2OIMain(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   private final def ensureClassLoader() {
     if (_classLoader == null)
       _classLoader = makeClassLoader()
+    sc.env.serializer.setDefaultClassLoader(_classLoader)
   }
 
   // NOTE: Exposed to repl package since used by SparkILoop
