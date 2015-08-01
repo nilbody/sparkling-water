@@ -69,8 +69,14 @@ import org.apache.spark.util.Utils
   *  @version 1.2
   */
 @DeveloperApi
-class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: String  = "sparkling_shell_interpreter"
+class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
+               val master: Option[String], var sessionID: String
                 ) extends AnyRef with LoopCommands with H2OILoopInit with Logging {
+  def this(sc : SparkContext, h2oContext: H2OContext, master: String, sessionID: String  = "sparkling_shell_interpreter") = this(Some(sc), Some(h2oContext), Some(master),sessionID)
+  def this(sc : SparkContext, h2oContext: H2OContext, sessionID: String) =  this(Some(sc), Some(h2oContext), None,sessionID)
+  def this(sc : SparkContext, h2oContext: H2OContext) =  this(Some(sc), Some(h2oContext), None,"sparkling_shell_interpreter")
+  def this() = this(None,None, None,"sparkling_shell_interpreter")
+
   private val in0: Option[BufferedReader] = None
   // NOTE: Exposed in package for testing
   private[repl] var settings: Settings = _
@@ -87,7 +93,7 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   private def onIntp[T](f: H2OIMain => T): T = f(intp)
 
   private val outWriter = new StringWriter()
-  override protected def out: JPrintWriter = if(sc == null){
+  override protected def out: JPrintWriter = if(sc.isEmpty){
     // this loop handles sparkling shell, sparcontext wasn't so far created and we want the output everything to the console
     new JPrintWriter(scala.Console.out, true)}else{
     new JPrintWriter(outWriter)
@@ -186,7 +192,10 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   /** Close the interpreter and set the var to null. */
   def closeInterpreter() {
     if (intp ne null) {
-     // sparkCleanUp()
+      if(sc.isEmpty){
+      // close spark context only if the sparkling shell is closed
+        sparkCleanUp()
+      }
       intp.close()
       intp = null
     }
@@ -760,7 +769,11 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
         addedClasspath = ClassPath.join(addedClasspath, f.path)
         totalClasspath = ClassPath.join(settings.classpath.value, addedClasspath)
         intp.addUrlsToClassPath(f.toURI.toURL)
-        sc.addJar(f.toURI.toURL.getPath)
+        if(sc.isEmpty){
+          sc.get.addJar(f.toURI.toURL.getPath)
+        }else{
+          sparkContext.addJar(f.toURI.toURL.getPath)
+        }
       }
     }
   }
@@ -770,7 +783,11 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     if (f.exists) {
       addedClasspath = ClassPath.join(addedClasspath, f.path)
       intp.addUrlsToClassPath(f.toURI.toURL)
-     sc.addJar(f.toURI.toURL.getPath)
+      if(sc.isEmpty){
+     sc.get.addJar(f.toURI.toURL.getPath)
+      }else{
+        sparkContext.addJar(f.toURI.toURL.getPath)
+      }
       echo("Added '%s'.  Your new classpath is:\n\"%s\"".format(f.path, intp.global.classPath.asClasspathString))
     }
     else echo("The path '" + f + "' doesn't seem to exist.")
@@ -1042,13 +1059,6 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
 
     true
   }
-  def getSparkContext(): SparkContext = {
-    sc
-  }
-
-  def getH2OContext(): H2OContext = {
-    h2oContext
-  }
 
     // NOTE: Must be public for visibility
     @DeveloperApi
@@ -1087,7 +1097,18 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
   }
 
   private def getMaster(): String = {
-    sc.master
+    if(sc.nonEmpty){
+      sc.get.master
+    }else{
+    val master = this.master match {
+      case Some(m) => m
+      case None =>
+        val envMaster = sys.env.get("MASTER")
+        val propMaster = sys.props.get("spark.master")
+        propMaster.orElse(envMaster).getOrElse("local[*]")
+    }
+    master
+    }
   }
 
   /** process command-line arguments and do as they request */
@@ -1103,6 +1124,11 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
       case help   => echoNoNL(help) ; true
     }
   }
+
+  /**
+   * This method is used to initialize settings to slave interpreters only, sc can not be null when this method is called
+   * @return
+   */
   private def createSettings(): Settings = {
     settings = new Settings()
     settings.usejavacp.value = true
@@ -1112,12 +1138,12 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
     // synchronous calls
     settings.Yreplsync.value = true
     // add jars to the interpreter ( needed for the hadoop )
-    for (jar <- sc.jars){
+    for (jar <- sc.get.jars){
       settings.classpath.append(jar)
       settings.bootclasspath.append(jar)
     }
 
-    for(jar <- sc.addedJars){
+    for(jar <- sc.get.addedJars){
       settings.bootclasspath.append(jar._1)
       settings.classpath.append(jar._1)
     }
@@ -1155,5 +1181,8 @@ class H2OILoop(val sc: SparkContext, val h2oContext: H2OContext, var sessionID: 
       "Success"
     }
   }
+  // initialize slave interpreter only if sc is non empty
+  if(sc.nonEmpty){
   initH2OILoop()
+  }
 }

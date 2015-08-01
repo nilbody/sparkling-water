@@ -27,7 +27,7 @@ object H2OMain {
   def interp_=(i: H2OILoop) { _interp = i }
 
   def main(args: Array[String]) {
-    _interp = new H2OILoop(null,null)
+    _interp = new H2OILoop
     _interp.process(args)
   }
 }
