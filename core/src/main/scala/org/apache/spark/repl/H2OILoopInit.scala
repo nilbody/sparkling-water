@@ -20,15 +20,26 @@ import scala.tools.nsc.util.stackTraceString
 private[repl] trait H2OILoopInit {
   self: H2OILoop =>
 
+  private val initLock = new java.util.concurrent.locks.ReentrantLock()
+  private val initCompilerCondition = initLock.newCondition() // signal the compiler is initialized
+  private val initLoopCondition = initLock.newCondition()     // signal the whole repl is initialized
+  private val initStart = System.nanoTime
+  // a condition used to ensure serial access to the compiler.
+  @volatile private var initIsComplete = false
+  @volatile private var initError: String = null
+  // code to be executed only after the interpreter is initialized
+  // and the lazy val `global` can be accessed without risk of deadlock.
+  private var pendingThunks: List[() => Unit] = Nil
+
   /** Print a welcome message */
   def printWelcome() {
-    echo("""Welcome to
+    echo( """Welcome to
       ____              __
      / __/__  ___ _____/ /__
     _\ \/ _ \/ _ `/ __/  '_/
    /___/ .__/\_,_/_/ /_/\_\   version %s
       /_/
-         """.format(SPARK_VERSION))
+          """.format(SPARK_VERSION))
     import Properties._
     val welcomeMsg = "Using Scala %s (%s, Java %s)".format(
       versionString, javaVmName, javaVersion)
@@ -37,31 +48,44 @@ private[repl] trait H2OILoopInit {
     echo("Type :help for more information.")
   }
 
-  protected def asyncMessage(msg: String) {
-    if (isReplInfo || isReplPower)
-      echoAndRefresh(msg)
+  def initializeSpark() {
+    intp.beQuietDuring {
+      if (sparkContext.isEmpty) {
+        command( """
+         @transient val sc = {
+           val _sc = org.apache.spark.repl.H2OMain.interp.createSparkContext()
+           println("Spark context available as sc.")
+           _sc
+         }
+                 """)
+      }
+      else {
+        intp.quietBind("sc", sparkContext.get)
+        intp.quietBind("h2oContext", h2oContext.get)
+      }
+      command( """
+      @transient implicit val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+      println("SQL context available as sqlContext.")
+               """)
+      command("import org.apache.spark.SparkContext._")
+      command("import org.apache.spark.sql.{DataFrame, Row, SQLContext}")
+      command("import sqlContext.implicits._")
+      command("import sqlContext.sql")
+      command("import org.apache.spark.sql.functions._")
+    }
   }
-
-  private val initLock = new java.util.concurrent.locks.ReentrantLock()
-  private val initCompilerCondition = initLock.newCondition() // signal the compiler is initialized
-  private val initLoopCondition = initLock.newCondition()     // signal the whole repl is initialized
-  private val initStart = System.nanoTime
-
-  private def withLock[T](body: => T): T = {
-    initLock.lock()
-    try body
-    finally initLock.unlock()
-  }
-  // a condition used to ensure serial access to the compiler.
-  @volatile private var initIsComplete = false
-  @volatile private var initError: String = null
-  private def elapsed() = "%.3f".format((System.nanoTime - initStart).toDouble / 1000000000L)
 
   // the method to be called when the interpreter is initialized.
   // Very important this method does nothing synchronous (i.e. do
   // not try to use the interpreter) because until it returns, the
   // repl's lazy val `global` is still locked.
   protected def initializedCallback() = withLock(initCompilerCondition.signal())
+
+  private def withLock[T](body: => T): T = {
+    initLock.lock()
+    try body
+    finally initLock.unlock()
+  }
 
   // Spins off a thread which awaits a single message once the interpreter
   // has been initialized.
@@ -73,27 +97,16 @@ private[repl] trait H2OILoopInit {
     }
   }
 
-  // called from main repl loop
-  protected def awaitInitialized(): Boolean = {
-    if (!initIsComplete)
-      withLock { while (!initIsComplete) initLoopCondition.await() }
-    if (initError != null) {
-      println("""
-                |Failed to initialize the REPL due to an unexpected error.
-                |This is a bug, please, report it along with the error diagnostics printed below.
-                |%s.""".stripMargin.format(initError)
-      )
-      false
-    } else true
+  protected def asyncMessage(msg: String) {
+    if (isReplInfo || isReplPower)
+      echoAndRefresh(msg)
   }
   // private def warningsThunks = List(
   //   () => intp.bind("lastWarnings", "" + typeTag[List[(Position, String)]], intp.lastWarnings _),
   // )
 
-  protected def postInitThunks = List[Option[() => Unit]](
-    Some(intp.setContextClassLoader _),
-    if (isReplPower) Some(() => enablePowerMode(true)) else None
-  ).flatten
+  private def elapsed() = "%.3f".format((System.nanoTime - initStart).toDouble / 1000000000L)
+
   // ++ (
   //   warningsThunks
   // )
@@ -116,42 +129,15 @@ private[repl] trait H2OILoopInit {
     }
   }
 
-  def initializeSpark() {
-    intp.beQuietDuring {
-      if(sparkContext.isEmpty){
-        command("""
-         @transient val sc = {
-           val _sc = org.apache.spark.repl.H2OMain.interp.createSparkContext()
-           println("Spark context available as sc.")
-           _sc
-         }
-                """)
-        command("""
-         @transient val sqlContext = {
-           val _sqlContext = org.apache.spark.repl.H2OMain.interp.createSQLContext()
-           println("SQL context available as sqlContext.")
-           _sqlContext
-         }
-                """)
-      }
-      else{
-        intp.quietBind("sc", sparkContext.get)
-        intp.quietBind("h2oContext",h2oContext.get)
-        intp.quietBind("sqlContext",new SQLContext(sparkContext.get))
-      }
-      command("import org.apache.spark.SparkContext._")
-      command("import sqlContext.implicits._")
-      command("import sqlContext.sql")
-      command("import org.apache.spark.sql.functions._")
-    }
-  }
+  protected def postInitThunks = List[Option[() => Unit]](
+    Some(intp.setContextClassLoader _),
+    if (isReplPower) Some(() => enablePowerMode(true)) else None
+  ).flatten
 
-  // code to be executed only after the interpreter is initialized
-  // and the lazy val `global` can be accessed without risk of deadlock.
-  private var pendingThunks: List[() => Unit] = Nil
   protected def addThunk(body: => Unit) = synchronized {
     pendingThunks :+= (() => body)
   }
+
   protected def runThunks(): Unit = synchronized {
     if (pendingThunks.nonEmpty)
       logDebug("Clearing " + pendingThunks.size + " thunks.")
@@ -161,5 +147,21 @@ private[repl] trait H2OILoopInit {
       pendingThunks = pendingThunks.tail
       thunk()
     }
+  }
+
+  // called from main repl loop
+  protected def awaitInitialized(): Boolean = {
+    if (!initIsComplete)
+      withLock {
+        while (!initIsComplete) initLoopCondition.await()
+      }
+    if (initError != null) {
+      println( """
+                 |Failed to initialize the REPL due to an unexpected error.
+                 |This is a bug, please, report it along with the error diagnostics printed below.
+                 |%s.""".stripMargin.format(initError)
+      )
+      false
+    } else true
   }
 }
