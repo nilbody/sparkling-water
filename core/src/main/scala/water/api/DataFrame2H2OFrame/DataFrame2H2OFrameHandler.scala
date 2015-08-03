@@ -2,7 +2,7 @@ package water.api.DataFrame2H2OFrame
 
 import org.apache.spark.SparkContext
 import org.apache.spark.h2o.{H2OFrame, H2OContext}
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import water.{DKV, Iced}
 import water.api.Handler
 
@@ -18,6 +18,13 @@ class DataFrame2H2OFrameHandler(val sc: SparkContext, val h2oContext: H2OContext
     val dataFrame = h2oContext.asDataFrame(h2oFrame)
     s.transformedId = "dataFrame" + s.frame_id
     dataFrame.registerTempTable(s.transformedId)
+    s
+  }
+
+  def fromDataFrameToH2OFrame(version: Int, s: FrameIdV3): FrameIdV3 = {
+    val dataFrame: DataFrame = sqlContext.table(s.frame_id)
+    val h2oFrame = h2oContext.asH2OFrame(dataFrame)
+    s.transformedId = h2oFrame._key.toString
     s
   }
 }
