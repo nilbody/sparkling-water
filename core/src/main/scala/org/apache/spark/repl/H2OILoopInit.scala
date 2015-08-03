@@ -64,8 +64,8 @@ private[repl] trait H2OILoopInit {
                  """)
       }
       else {
-        command("@transient implicit val sqlContext = new org.apache.spark.sql.SQLContext(sc)")
         intp.quietBind("sc", sparkContext.get)
+        command("@transient implicit val sqlContext = new org.apache.spark.sql.SQLContext(sc)")
         intp.quietBind("h2oContext", h2oContext.get)
       }
 
@@ -124,13 +124,6 @@ private[repl] trait H2OILoopInit {
   //   () => intp.bind("lastWarnings", "" + typeTag[List[(Position, String)]], intp.lastWarnings _),
   // )
 
-  protected def asyncMessage(msg: String) {
-    if (isReplInfo || isReplPower)
-      echoAndRefresh(msg)
-  }
-
-  private def elapsed() = "%.3f".format((System.nanoTime - initStart).toDouble / 1000000000L)
-
   protected def postInitThunks = List[Option[() => Unit]](
     Some(intp.setContextClassLoader _),
     if (isReplPower) Some(() => enablePowerMode(true)) else None
@@ -150,6 +143,13 @@ private[repl] trait H2OILoopInit {
       thunk()
     }
   }
+
+  protected def asyncMessage(msg: String) {
+    if (isReplInfo || isReplPower)
+      echoAndRefresh(msg)
+  }
+
+  private def elapsed() = "%.3f".format((System.nanoTime - initStart).toDouble / 1000000000L)
 
   // called from main repl loop
   protected def awaitInitialized(): Boolean = {
