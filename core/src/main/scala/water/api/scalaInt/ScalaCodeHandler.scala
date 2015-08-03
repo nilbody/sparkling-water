@@ -1,7 +1,5 @@
 package water.api.scalaInt
 
-import java.util.UUID
-
 import org.apache.spark.SparkContext
 import org.apache.spark.h2o.H2OContext
 import org.apache.spark.repl.H2OILoop
@@ -39,12 +37,12 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
   }
 
   def initSession(version: Int, s: ScalaSessionIdV3): ScalaSessionIdV3 = {
-    val intp = getInterpreter()
+    val intp = fetchInterpreter()
     s.session_id = intp.sessionID
     s
   }
 
-  def getInterpreter(): H2OILoop = {
+  def fetchInterpreter(): H2OILoop = {
     this.synchronized {
       if (!freeInterpreters.isEmpty) {
         val intp = freeInterpreters.poll()

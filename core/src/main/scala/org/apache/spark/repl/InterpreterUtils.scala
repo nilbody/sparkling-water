@@ -7,20 +7,28 @@ import org.apache.spark.SparkEnv
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import scala.tools.nsc.util.ScalaClassLoader.URLClassLoader
 
-
+/**
+ * Various utils needed to work for the interpreters. Mainly this object is used to register repl classloader, which is
+ * shared amongs all the interpreters.
+ * For the first time the H2OIMain is initialized, id creates the repl classloader and stores it here. Other instances
+ * of H2OIMain then obtain the classloader from here.
+ */
  object InterpreterUtils{
+  private var _replClassLoader: AbstractFileClassLoader = null
+  private var _runtimeClassLoader: URLClassLoader with ExposeAddUrl = null // wrapper exposing addURL
+
   def getClassOutputDir = {
-      REPLCLassServer.getClassOutputDirectory
+    ReplCLassServer.getClassOutputDirectory
   }
 
   def classServerUri = {
-    if(!REPLCLassServer.isRunning){
-      REPLCLassServer.start()
+    if (!ReplCLassServer.isRunning) {
+      ReplCLassServer.start()
     }
-    REPLCLassServer.classServerUri
+    ReplCLassServer.classServerUri
   }
 
-  private var _replClassLoader : AbstractFileClassLoader = null
+
   def REPLCLassLoader = this.synchronized{
     _replClassLoader
   }
@@ -34,7 +42,6 @@ import scala.tools.nsc.util.ScalaClassLoader.URLClassLoader
     _replClassLoader = null
   }
 
-  private var _runtimeClassLoader : URLClassLoader with ExposeAddUrl = null // wrapper exposing addURL
   def runtimeClassLoader = this.synchronized{
     _runtimeClassLoader
   }

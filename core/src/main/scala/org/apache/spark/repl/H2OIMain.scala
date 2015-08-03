@@ -12,9 +12,7 @@ import java.util.concurrent.Future
 
 import org.apache.spark._
 import org.apache.spark.annotation.DeveloperApi
-import org.apache.spark.h2o.H2OContext
 import org.apache.spark.repl.H2OIMain.CodeAssembler
-import org.apache.spark.repl.H2OMemberHandlers
 
 import scala.Predef.{println => _, _}
 import scala.collection.mutable
@@ -35,7 +33,8 @@ import scala.tools.reflect.StdRuntimeTags._
 import scala.tools.util.PathResolver
 import scala.util.control.ControlThrowable
 
-/** An interpreter for Scala code.
+/** An interpreter for Scala code. It is slighlty modified for H2O purposes so it can be used in the
+  * environemnt where multiple interpretrs exist and are using the same http class server.
   *
   * The main public entry points are compile(), interpret(), and bind().
   * The compile() method loads a complete Scala file.  The interpret() method
@@ -75,7 +74,7 @@ import scala.util.control.ControlThrowable
   extends H2OImports with Logging {
   imain =>
 
-  private val SPARK_DEBUG_REPL: Boolean = (System.getenv("SPARK_DEBUG_REPL") == "1")
+  private val SPARK_DEBUG_REPL: Boolean = System.getenv("SPARK_DEBUG_REPL") == "1"
 
   /** Local directory to save .class files too */
   private lazy val outputDir = {
@@ -136,10 +135,10 @@ import scala.util.control.ControlThrowable
     }
   }
 
-  private def compilerClasspath: Seq[URL] = (
+  private def compilerClasspath: Seq[URL] = {
     if (isInitializeComplete) global.classPath.asURLs
     else new PathResolver(settings).result.asURLs // the compiler's classpath
-    )
+  }
 
   // NOTE: Exposed to repl package since accessed indirectly from SparkIMain
   private[repl] def settings = currentSettings
@@ -292,12 +291,12 @@ import scala.util.control.ControlThrowable
 
   import naming._
 
-  // NOTE: Exposed to repl package since used by SparkILoop
+  // NOTE: Exposed to repl package since used by H2OILoop
   private[repl] object deconstruct extends {
     val global: imain.global.type = imain.global
   } with StructuredTypeStrings
 
-  // NOTE: Exposed to repl package since used by SparkImports
+  // NOTE: Exposed to repl package since used by H2OImports
   private[repl] lazy val memberHandlers = new {
     val intp: imain.type = imain
   } with H2OMemberHandlers
@@ -465,7 +464,7 @@ import scala.util.control.ControlThrowable
    */
   @DeveloperApi
   protected def parentClassLoader: ClassLoader =
-    SparkHelper.explicitParentLoader(settings).getOrElse(this.getClass.getClassLoader())
+    SparkHelper.explicitParentLoader(settings).getOrElse(this.getClass.getClassLoader)
 
   /* A single class loader is used for all commands interpreted by this Interpreter.
    It would also be possible to create a new class loader for each command
@@ -520,7 +519,7 @@ import scala.util.control.ControlThrowable
         InterpreterUtils.runtimeClassLoader
     })
 
-  private def getInterpreterClassLoader() = classLoader
+  private def getInterpreterClassLoader = classLoader
 
   // Set the current Java "context" class loader to this interpreter's class loader
   // NOTE: Exposed to repl package since used by SparkILoopInit
@@ -750,7 +749,7 @@ import scala.util.control.ControlThrowable
       case _: Assign => // we don't want to include assignments
       case _: TermTree | _: Ident | _: Select => // ... but do want other unnamed terms.
         val varName = if (synthetic) freshInternalVarName() else freshUserVarName()
-        val rewrittenLine = (
+        val rewrittenLine = {
           // In theory this would come out the same without the 1-specific test, but
           // it's a cushion against any more sneaky parse-tree position vs. code mismatches:
           // this way such issues will only arise on multiple-statement repl input lines,
@@ -788,7 +787,7 @@ import scala.util.control.ControlThrowable
             )
             combined
           }
-          )
+        }
         // Rewriting    "foo ; bar ; 123"
         // to           "foo ; bar ; val resXX = 123"
         requestFromLine(rewrittenLine, synthetic) match {
@@ -1124,7 +1123,7 @@ import scala.util.control.ControlThrowable
       // MATEI: Changed this to getClass because the root object is no longer a module (Scala singleton object)
 
       val readRoot = rootMirror.getClassByName(newTypeName(readPath)) // the outermost wrapper
-      (accessPath split '.').foldLeft(readRoot: Symbol) {
+      (accessPath split ".").foldLeft(readRoot: Symbol) {
         case (sym, "") => sym
         case (sym, name) => afterTyper(termMember(sym, name))
       }
@@ -1143,10 +1142,10 @@ import scala.util.control.ControlThrowable
               // but we want to let through multiple warnings on the same line
               // from the same run.  The untrimmed line will be the same since
               // there's no whitespace indenting blowing it.
-              (pos.lineContent == pos0.lineContent)
+              pos.lineContent == pos0.lineContent
             }
           }
-          ((pos, msg)) :: loop(filtered)
+          (pos, msg) :: loop(filtered)
       }
       // PRASHANT: This leads to a NoSuchMethodError for _.warnings. Yet to figure out its purpose.
       // val warnings = loop(run.allConditionalWarnings flatMap (_.warnings))
@@ -1363,7 +1362,7 @@ import scala.util.control.ControlThrowable
     /** Types of variables defined by this request. */
     lazy val compilerTypeOf = typeMap[Type](x => x) withDefaultValue NoType
     /** String representations of same. */
-    lazy val typeOf = typeMap[String](tp => afterTyper(tp.toString))
+    lazy val typeOf = typeMap[String](tp => afterTyper(tp.toString()))
 
     // lazy val definedTypes: Map[Name, Type] = {
     //   typeNames map (x => x -> afterTyper(resultSymbol.info.nonPrivateDecl(x).tpe)) toMap
@@ -1509,7 +1508,7 @@ import scala.util.control.ControlThrowable
   @DeveloperApi
   def runtimeClassAndTypeOfTerm(id: String): Option[(JClass, Type)] = {
     classOfTerm(id) flatMap { clazz =>
-      new RichClass(clazz).supers find (c => !(new RichClass(c).isScalaAnonymous)) map { nonAnon =>
+      new RichClass(clazz).supers find (c => !new RichClass(c).isScalaAnonymous) map { nonAnon =>
         (nonAnon, runtimeTypeOfTerm(id))
       }
     }
