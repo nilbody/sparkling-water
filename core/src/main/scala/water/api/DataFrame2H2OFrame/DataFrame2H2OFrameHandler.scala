@@ -16,7 +16,7 @@ class DataFrame2H2OFrameHandler(val sc: SparkContext, val h2oContext: H2OContext
     val value = DKV.get(s.frame_id)
     val h2oFrame: H2OFrame = value.get()
     val dataFrame = h2oContext.asDataFrame(h2oFrame)
-    s.transformedId = "dataFrame" + s.frame_id
+    s.transformedId = "dataframe_" + s.frame_id
     dataFrame.registerTempTable(s.transformedId)
     s
   }
