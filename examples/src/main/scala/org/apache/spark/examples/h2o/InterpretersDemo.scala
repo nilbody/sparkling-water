@@ -2,18 +2,18 @@ package org.apache.spark.examples.h2o
 
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.h2o.H2OContext
-import org.apache.spark.repl.REPLCLassServer
+import org.apache.spark.repl.{InterpreterUtils, REPLCLassServer}
 import org.apache.spark.{SparkConf, SparkContext}
 import water.app.SparkContextSupport
 
 
-object RESTTest extends SparkContextSupport with org.apache.spark.Logging {
+object InterpretersDemo extends SparkContextSupport with org.apache.spark.Logging {
 
   def main(args: Array[String]): Unit = {
     Logger.getLogger("org").setLevel(Level.INFO)
     // Configure this application
     val conf: SparkConf = new SparkConf()
-    conf.set("spark.repl.class.uri",REPLCLassServer.classServerUri)
+    conf.set("spark.repl.class.uri",InterpreterUtils.classServerUri)
 
     // Create SparkContext to execute application on Spark cluster
     val sc = new SparkContext(conf)

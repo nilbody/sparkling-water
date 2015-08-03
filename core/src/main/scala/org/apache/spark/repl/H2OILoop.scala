@@ -1060,7 +1060,7 @@ class H2OILoop(var sparkContext: Option[SparkContext], var h2oContext: Option[H2
         .setMaster(getMaster())
         .setAppName("Spark shell")
         .setJars(jars)
-        .set("spark.repl.class.uri", IntpUtils.classServerUri)
+        .set("spark.repl.class.uri", InterpreterUtils.classServerUri)
       if (execUri != null) {
         conf.set("spark.executor.uri", execUri)
       }

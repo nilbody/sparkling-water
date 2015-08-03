@@ -8,7 +8,7 @@ import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import scala.tools.nsc.util.ScalaClassLoader.URLClassLoader
 
 
-private[repl] object IntpUtils{
+ object InterpreterUtils{
   def getClassOutputDir = {
     if (Main.interp == null) {
       // We are not running on top of sparkling shell, we need to create our own repl class server

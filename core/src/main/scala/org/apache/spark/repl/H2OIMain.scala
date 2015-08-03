@@ -79,7 +79,7 @@ import scala.util.control.ControlThrowable
 
   /** Local directory to save .class files too */
   private lazy val outputDir = {
-   IntpUtils.getClassOutputDir
+   InterpreterUtils.getClassOutputDir
   }
 
   if (SPARK_DEBUG_REPL) {
@@ -116,7 +116,7 @@ import scala.util.control.ControlThrowable
    */
   @DeveloperApi
   def classServerUri = {
-   IntpUtils.classServerUri
+   InterpreterUtils.classServerUri
   }
 
   /** We're going to go to some trouble to initialize the compiler asynchronously.
@@ -414,7 +414,7 @@ import scala.util.control.ControlThrowable
   @DeveloperApi
   def addUrlsToClassPath(urls: URL*): Unit = {
     new Run // Needed to force initialization of "something" to correctly load Scala classes from jars
-    urls.foreach(IntpUtils.runtimeClassLoader.addNewUrl) // Add jars/classes to runtime for execution
+    urls.foreach(InterpreterUtils.runtimeClassLoader.addNewUrl) // Add jars/classes to runtime for execution
     updateCompilerClassPath(urls: _*) // Add jars/classes to compile time for compiling
   }
 
@@ -481,19 +481,19 @@ import scala.util.control.ControlThrowable
   definitions.
   */
   private def resetClassLoader() = {
-    logDebug("Setting new classloader: was " + IntpUtils.REPLCLassLoader)
-    IntpUtils.resetREPLCLassLoader()
+    logDebug("Setting new classloader: was " + InterpreterUtils.REPLCLassLoader)
+    InterpreterUtils.resetREPLCLassLoader()
     ensureClassLoader()
   }
 
   private final def ensureClassLoader() {
-       IntpUtils.ensureREPLClassLoader(makeClassLoader())
+       InterpreterUtils.ensureREPLClassLoader(makeClassLoader())
   }
 
   // NOTE: Exposed to repl package since used by SparkILoop
   private[repl] def classLoader: AbstractFileClassLoader = {
     ensureClassLoader()
-    IntpUtils.REPLCLassLoader
+    InterpreterUtils.REPLCLassLoader
   }
 
   private class TranslatingClassLoader(parent: ClassLoader) extends AbstractFileClassLoader(virtualDirectory, parent) {
@@ -516,8 +516,8 @@ import scala.util.control.ControlThrowable
     new TranslatingClassLoader(parentClassLoader match {
       case null => ScalaClassLoader fromURLs compilerClasspath
       case p =>
-        IntpUtils.ensureRuntimeCLassLoader(new URLClassLoader(compilerClasspath, p) with ExposeAddUrl)
-        IntpUtils.runtimeClassLoader
+        InterpreterUtils.ensureRuntimeCLassLoader(new URLClassLoader(compilerClasspath, p) with ExposeAddUrl)
+        InterpreterUtils.runtimeClassLoader
     })
 
   private def getInterpreterClassLoader() = classLoader

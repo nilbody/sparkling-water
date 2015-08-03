@@ -13,7 +13,7 @@ import org.apache.spark.{HttpServer, Logging, SecurityManager, SparkConf}
 /**
  * Various interpreter utils
  */
-object REPLCLassServer extends Logging {
+private[repl] object REPLCLassServer extends Logging {
 
   private var started = false
   private val conf = new SparkConf()
