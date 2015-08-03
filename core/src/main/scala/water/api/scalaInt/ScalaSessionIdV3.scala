@@ -7,5 +7,5 @@ import water.api.{API, Schema}
  */
 class ScalaSessionIdV3 extends Schema[IcedSessionId,ScalaSessionIdV3] {
   @API(help = "Session id identifying the correct interpreter", direction = API.Direction.OUTPUT)
-  var session_id: String = _
+  var session_id: Int = -1
 }

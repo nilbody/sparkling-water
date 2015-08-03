@@ -70,12 +70,13 @@ import org.apache.spark.util.Utils
   */
 @DeveloperApi
 class H2OILoop(var sparkContext: Option[SparkContext], var h2oContext: Option[H2OContext],
-               val master: Option[String], var sessionID: String
+               val master: Option[String], var sessionID: Int
                 ) extends AnyRef with LoopCommands with H2OILoopInit with Logging {
-  def this(sc : SparkContext, h2oContext: H2OContext, master: String, sessionID: String  = "sparkling_shell_interpreter") = this(Some(sc), Some(h2oContext), Some(master),sessionID)
-  def this(sc : SparkContext, h2oContext: H2OContext, sessionID: String) =  this(Some(sc), Some(h2oContext), None,sessionID)
-  def this(sc : SparkContext, h2oContext: H2OContext) =  this(Some(sc), Some(h2oContext), None,"sparkling_shell_interpreter")
-  def this() = this(None,None, None,"sparkling_shell_interpreter")
+  // 0 is session_id of main spark shell
+  def this(sc : SparkContext, h2oContext: H2OContext, master: String, sessionID: Int  = 0) = this(Some(sc), Some(h2oContext), Some(master),sessionID)
+  def this(sc : SparkContext, h2oContext: H2OContext, sessionID: Int) =  this(Some(sc), Some(h2oContext), None,sessionID)
+  def this(sc : SparkContext, h2oContext: H2OContext) =  this(Some(sc), Some(h2oContext), None,0)
+  def this() = this(None,None, None,0)
 
   private val in0: Option[BufferedReader] = None
   // NOTE: Exposed in package for testing

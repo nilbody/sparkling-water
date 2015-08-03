@@ -7,5 +7,5 @@ import water.api.{API, Schema}
  */
 class ScalaSessionsV3 extends Schema[IcedSessions,ScalaSessionsV3]{
   @API(help = "List of session IDs", direction = API.Direction.OUTPUT)
-  var sessions: Array[String] = _
+  var sessions: Array[Int] = _
 }

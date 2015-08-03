@@ -17,8 +17,6 @@
 
 package org.apache.spark.repl
 
-import scala.collection.mutable.Set
-
 object H2OMain {
   private var _interp: H2OILoop = _
 

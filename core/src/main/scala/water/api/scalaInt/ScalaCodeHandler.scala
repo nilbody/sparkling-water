@@ -19,11 +19,13 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
   val intrPoolSize = 1 // 1 only for development purposes
   val freeInterpreters = new java.util.concurrent.ConcurrentLinkedQueue[H2OILoop]
   val timeout = 300000 // 5 minutes in milliseconds
-  var mapIntr = new TrieMap[String, (H2OILoop, Long)]
+  var mapIntr = new TrieMap[Int, (H2OILoop, Long)]
+  var lastIdUsed = 0
   initializeHandler()
 
   def interpret(version: Int, s: ScalaCodeV3): ScalaCodeV3 = {
-    if (s.session_id == null || !mapIntr.isDefinedAt(s.session_id)) {
+    // check is session_id is set
+    if (s.session_id == -1 || !mapIntr.isDefinedAt(s.session_id)) {
       // session ID not set
       s.response = "Create session ID using the address /3/scalaint"
     } else {
@@ -76,7 +78,7 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
     val checkThread = new Thread(new Runnable {
       def run() {
         while (true) {
-          mapIntr.foreach { case (id: String, (intr: H2OILoop, lastChecked: Long)) =>
+          mapIntr.foreach { case (id: Int, (intr: H2OILoop, lastChecked: Long)) =>
             if (Platform.currentTime - lastChecked >= timeout) {
               mapIntr(id)._1.closeInterpreter()
               mapIntr -= id
@@ -96,40 +98,31 @@ class ScalaCodeHandler(val sc: SparkContext, val h2oContext: H2OContext) extends
   }
 
   def createInterpreter(): H2OILoop = {
-    val id = createUUID()
+    val id = createID()
     val intp = ScalaCodeHandler.initializeInterpreter(sc, h2oContext,id)
     freeInterpreters.add(intp)
     mapIntr.put(id, (intp, Platform.currentTime))
     intp
   }
 
-  def createUUID() : String = {
-    var done = false
-    var id = UUID.randomUUID().toString // simple solution for now ..
-    do {
-      if (!mapIntr.contains(id)) {
-        done = true
-      } else {
-        id = UUID.randomUUID().toString
-      }
+  def createID() : Int = {
+    this.synchronized {
+      lastIdUsed = lastIdUsed + 1
+      lastIdUsed
     }
-    while (!done)
-    // id is also used as package for generated class names, dashes are not allowed and uuid is generated with dashes
-    id = id.replaceAll("-","_")
-    id
   }
 }
 
 object ScalaCodeHandler {
-  def initializeInterpreter(sparkContext: SparkContext, h2oContext: H2OContext, sessionID: String): H2OILoop = {
+  def initializeInterpreter(sparkContext: SparkContext, h2oContext: H2OContext, sessionID: Int): H2OILoop = {
     new H2OILoop(sparkContext, h2oContext,sessionID)
   }
 }
 
 
-private[api] class IcedCode(val session_id: String, val code: String) extends Iced[IcedCode] {
+private[api] class IcedCode(val session_id: Int, val code: String) extends Iced[IcedCode] {
 
-  def this() = this("", "") // initialize with empty values, this is used by the createImpl method in the
+  def this() = this(-1, "") // initialize with dummy values, this is used by the createImpl method in the
   //RequestServer, as it calls constructor without any arguments
 }
 

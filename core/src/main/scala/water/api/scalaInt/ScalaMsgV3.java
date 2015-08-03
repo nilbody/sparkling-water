@@ -8,7 +8,7 @@ import water.api.Schema;
  */
 public class ScalaMsgV3 extends Schema<IcedMsg, ScalaMsgV3> {
     @API(help = "Session id identifying the correct interpreter", direction = API.Direction.INPUT)
-    public String session_id;
+    public int session_id;
 
     @API(help = "Message from interpreter", direction = API.Direction.OUTPUT)
     public String msg;

@@ -9,7 +9,7 @@ import water.api.Schema;
  */
 public class ScalaCodeV3 extends Schema<IcedCode, ScalaCodeV3> {
     @API(help = "Session id identifying the correct interpreter", direction = API.Direction.INPUT)
-    public String session_id;
+    public int session_id;
 
     @API(help = "Scala code to interpret", direction = API.Direction.INPUT)
     public String code;
