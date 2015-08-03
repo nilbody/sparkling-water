@@ -10,12 +10,7 @@ import scala.tools.nsc.util.ScalaClassLoader.URLClassLoader
 
  object InterpreterUtils{
   def getClassOutputDir = {
-    if (Main.interp == null) {
-      // We are not running on top of sparkling shell, we need to create our own repl class server
       REPLCLassServer.getClassOutputDirectory
-    } else {
-      Main.interp.intp.getClassOutputDirectory
-    }
   }
 
   def classServerUri = {
