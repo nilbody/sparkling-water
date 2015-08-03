@@ -121,14 +121,14 @@ private[repl] trait H2OILoopInit {
       if(sc.isEmpty){
         command("""
          @transient val sc = {
-           val _sc = org.apache.spark.repl.Main.interp.createSparkContext()
+           val _sc = org.apache.spark.repl.H2OMain.interp.createSparkContext()
            println("Spark context available as sc.")
            _sc
          }
                 """)
         command("""
          @transient val sqlContext = {
-           val _sqlContext = org.apache.spark.repl.Main.interp.createSQLContext()
+           val _sqlContext = org.apache.spark.repl.H2OMain.interp.createSQLContext()
            println("SQL context available as sqlContext.")
            _sqlContext
          }
