@@ -74,6 +74,8 @@ private[repl] trait H2OILoopInit {
       command("import sqlContext.implicits._")
       command("import sqlContext.sql")
       command("import org.apache.spark.sql.functions._")
+      command("import org.apache.spark.h2o._")
+      command("import org.apache.spark._")
     }
   }
 
@@ -82,12 +84,6 @@ private[repl] trait H2OILoopInit {
   // not try to use the interpreter) because until it returns, the
   // repl's lazy val `global` is still locked.
   protected def initializedCallback() = withLock(initCompilerCondition.signal())
-
-  private def withLock[T](body: => T): T = {
-    initLock.lock()
-    try body
-    finally initLock.unlock()
-  }
 
   // Spins off a thread which awaits a single message once the interpreter
   // has been initialized.
@@ -119,6 +115,12 @@ private[repl] trait H2OILoopInit {
         withLock(initLoopCondition.signal())
       }
     }
+  }
+
+  private def withLock[T](body: => T): T = {
+    initLock.lock()
+    try body
+    finally initLock.unlock()
   }
   // private def warningsThunks = List(
   //   () => intp.bind("lastWarnings", "" + typeTag[List[(Position, String)]], intp.lastWarnings _),
