@@ -58,15 +58,17 @@ private[repl] trait H2OILoopInit {
            _sc
          }
                  """)
+        command( """
+      @transient implicit val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+      println("SQL context available as sqlContext.")
+                 """)
       }
       else {
+        command("@transient implicit val sqlContext = new org.apache.spark.sql.SQLContext(sc)")
         intp.quietBind("sc", sparkContext.get)
         intp.quietBind("h2oContext", h2oContext.get)
       }
-      command( """
-      @transient implicit val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-      println("SQL context available as sqlContext.")
-               """)
+
       command("import org.apache.spark.SparkContext._")
       command("import org.apache.spark.sql.{DataFrame, Row, SQLContext}")
       command("import sqlContext.implicits._")
@@ -97,16 +99,6 @@ private[repl] trait H2OILoopInit {
     }
   }
 
-  protected def asyncMessage(msg: String) {
-    if (isReplInfo || isReplPower)
-      echoAndRefresh(msg)
-  }
-  // private def warningsThunks = List(
-  //   () => intp.bind("lastWarnings", "" + typeTag[List[(Position, String)]], intp.lastWarnings _),
-  // )
-
-  private def elapsed() = "%.3f".format((System.nanoTime - initStart).toDouble / 1000000000L)
-
   // ++ (
   //   warningsThunks
   // )
@@ -128,6 +120,16 @@ private[repl] trait H2OILoopInit {
       }
     }
   }
+  // private def warningsThunks = List(
+  //   () => intp.bind("lastWarnings", "" + typeTag[List[(Position, String)]], intp.lastWarnings _),
+  // )
+
+  protected def asyncMessage(msg: String) {
+    if (isReplInfo || isReplPower)
+      echoAndRefresh(msg)
+  }
+
+  private def elapsed() = "%.3f".format((System.nanoTime - initStart).toDouble / 1000000000L)
 
   protected def postInitThunks = List[Option[() => Unit]](
     Some(intp.setContextClassLoader _),
