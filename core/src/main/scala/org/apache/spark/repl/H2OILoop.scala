@@ -69,7 +69,7 @@ import org.apache.spark.util.Utils
   *  @version 1.2
   */
 @DeveloperApi
-class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
+class H2OILoop(var sparkContext: Option[SparkContext], var h2oContext: Option[H2OContext],
                val master: Option[String], var sessionID: String
                 ) extends AnyRef with LoopCommands with H2OILoopInit with Logging {
   def this(sc : SparkContext, h2oContext: H2OContext, master: String, sessionID: String  = "sparkling_shell_interpreter") = this(Some(sc), Some(h2oContext), Some(master),sessionID)
@@ -93,8 +93,8 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
   private def onIntp[T](f: H2OIMain => T): T = f(intp)
 
   private val outWriter = new StringWriter()
-  override protected def out: JPrintWriter = if(sc.isEmpty){
-    // this loop handles sparkling shell, sparcontext wasn't so far created and we want the output everything to the console
+  override protected def out: JPrintWriter = if(sparkContext.isEmpty){
+    // this loop handles sparkling shell, Spark Context wasn't so far created and we want the output everything to the console
     new JPrintWriter(scala.Console.out, true)}else{
     new JPrintWriter(outWriter)
   }
@@ -144,7 +144,6 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
 
   // NOTE: Must be public for visibility
   @DeveloperApi
-  var sparkContext: SparkContext = _
   var sqlContext: SQLContext = _
 
   override def echoCommandMessage(msg: String) {
@@ -192,8 +191,8 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
   /** Close the interpreter and set the var to null. */
   def closeInterpreter() {
     if (intp ne null) {
-      if(sc.isEmpty){
-      // close spark context only if the sparkling shell is closed
+      if(sparkContext.isEmpty){
+      // close spark context only if the main sparkling shell is closed
         sparkCleanUp()
       }
       intp.close()
@@ -769,11 +768,7 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
         addedClasspath = ClassPath.join(addedClasspath, f.path)
         totalClasspath = ClassPath.join(settings.classpath.value, addedClasspath)
         intp.addUrlsToClassPath(f.toURI.toURL)
-        if(sc.isEmpty){
-          sc.get.addJar(f.toURI.toURL.getPath)
-        }else{
-          sparkContext.addJar(f.toURI.toURL.getPath)
-        }
+        sparkContext.get.addJar(f.toURI.toURL.getPath)
       }
     }
   }
@@ -783,11 +778,7 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
     if (f.exists) {
       addedClasspath = ClassPath.join(addedClasspath, f.path)
       intp.addUrlsToClassPath(f.toURI.toURL)
-      if(sc.isEmpty){
-     sc.get.addJar(f.toURI.toURL.getPath)
-      }else{
-        sparkContext.addJar(f.toURI.toURL.getPath)
-      }
+      sparkContext.get.addJar(f.toURI.toURL.getPath)
       echo("Added '%s'.  Your new classpath is:\n\"%s\"".format(f.path, intp.global.classPath.asClasspathString))
     }
     else echo("The path '" + f + "' doesn't seem to exist.")
@@ -1073,9 +1064,9 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
       if (execUri != null) {
         conf.set("spark.executor.uri", execUri)
       }
-      sparkContext = new SparkContext(conf)
+      sparkContext = Some(new SparkContext(conf))
       logInfo("Created spark context..")
-      sparkContext
+      sparkContext.get
     }
 
 
@@ -1085,20 +1076,20 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
     val loader = Utils.getContextOrSparkClassLoader
     try {
       sqlContext = loader.loadClass(name).getConstructor(classOf[SparkContext])
-        .newInstance(sparkContext).asInstanceOf[SQLContext]
+        .newInstance(sparkContext.get).asInstanceOf[SQLContext]
       logInfo("Created sql context (with Hive support)..")
     }
     catch {
       case _: java.lang.ClassNotFoundException | _: java.lang.NoClassDefFoundError =>
-        sqlContext = new SQLContext(sparkContext)
+        sqlContext = new SQLContext(sparkContext.get)
         logInfo("Created sql context..")
     }
     sqlContext
   }
 
   private def getMaster(): String = {
-    if(sc.nonEmpty){
-      sc.get.master
+    if(sparkContext.nonEmpty){
+      sparkContext.get.master
     }else{
     val master = this.master match {
       case Some(m) => m
@@ -1138,12 +1129,12 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
     // synchronous calls
     settings.Yreplsync.value = true
     // add jars to the interpreter ( needed for the hadoop )
-    for (jar <- sc.get.jars){
+    for (jar <- sparkContext.get.jars){
       settings.classpath.append(jar)
       settings.bootclasspath.append(jar)
     }
 
-    for(jar <- sc.get.addedJars){
+    for(jar <- sparkContext.get.addedJars){
       settings.bootclasspath.append(jar._1)
       settings.classpath.append(jar._1)
     }
@@ -1181,8 +1172,8 @@ class H2OILoop(val sc: Option[SparkContext], val h2oContext: Option[H2OContext],
       "Success"
     }
   }
-  // initialize slave interpreter only if sc is non empty
-  if(sc.nonEmpty){
+  // initialize slave interpreter only if Spark Context is non empty. That means that main sparkling shell is allready running
+  if(sparkContext.nonEmpty){
   initH2OILoop()
   }
 }

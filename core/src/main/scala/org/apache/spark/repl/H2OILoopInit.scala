@@ -118,7 +118,7 @@ private[repl] trait H2OILoopInit {
 
   def initializeSpark() {
     intp.beQuietDuring {
-      if(sc.isEmpty){
+      if(sparkContext.isEmpty){
         command("""
          @transient val sc = {
            val _sc = org.apache.spark.repl.H2OMain.interp.createSparkContext()
@@ -135,9 +135,9 @@ private[repl] trait H2OILoopInit {
                 """)
       }
       else{
-        intp.quietBind("sc", sc.get)
+        intp.quietBind("sc", sparkContext.get)
         intp.quietBind("h2oContext",h2oContext.get)
-        intp.quietBind("sqlContext",new SQLContext(sc.get))
+        intp.quietBind("sqlContext",new SQLContext(sparkContext.get))
       }
       command("import org.apache.spark.SparkContext._")
       command("import sqlContext.implicits._")

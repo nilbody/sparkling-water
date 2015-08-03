@@ -14,12 +14,10 @@ object RESTTest extends SparkContextSupport with org.apache.spark.Logging {
     // Configure this application
     val conf: SparkConf = new SparkConf()
     conf.set("spark.repl.class.uri",REPLCLassServer.classServerUri)
-      .set("spark.serializer","org.apache.spark.serializer.JavaSerializer")
-      .set("spark.closure.serializer","org.apache.spark.serializer.JavaSerializer")
 
     // Create SparkContext to execute application on Spark cluster
     val sc = new SparkContext(conf)
-    val h2oContext = new H2OContext(sc).start(1)
+    val h2oContext = new H2OContext(sc).start()
     // Infinite wait
     this.synchronized( while(true) wait )
   }
