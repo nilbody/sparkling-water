@@ -26,6 +26,8 @@ class PubDev928TestSuite extends FunSuite with SparkITest {
     launch("water.sparkling.itest.local.PubDev928Test",
       env {
         sparkMaster("local-cluster[3,2,1024]")
+        conf("spark.executor.memory", "1g")
+        conf("spark.driver.memory", "1g")
       }
     )
   }
@@ -36,24 +38,33 @@ object PubDev928Test extends SparkContextSupport {
   def main(args: Array[String]): Unit = {
     val conf = configure("PUBDEV-928")
     val sc = new SparkContext(conf)
-    val h2oContext = new H2OContext(sc).start()
+    val h2oContext = H2OContext.getOrCreate(sc)
     import h2oContext._
     val sqlContext = new SQLContext(sc)
     import sqlContext.implicits._
 
     val airlinesData = new H2OFrame(new java.io.File("examples/smalldata/allyears2k_headers.csv.gz"))
 
+    // We need to explicitly repartition data to 12 chunks/partitions since H2O parser handling
+    // partitioning dynamically based on available number of CPUs
+    println("Number of chunks before query: " + airlinesData.anyVec().nChunks())
     val airlinesTable : RDD[Airlines] = asRDD[Airlines](airlinesData)
     airlinesTable.toDF.registerTempTable("airlinesTable")
 
     val query = "SELECT * FROM airlinesTable WHERE Dest LIKE 'SFO'"
-    val result: H2OFrame = sqlContext.sql(query) // Using a registered context and table
+    // Transform result of SQL query directly into H2OFrame, but change number of
+    val queryResult = sqlContext.sql(query)
+    val partitionNumbers = queryResult.count().asInstanceOf[Int] + 1
+    val result: H2OFrame = h2oContext.asH2OFrame(queryResult.repartition(partitionNumbers), "flightTable")
+    println("Number of partitions in query result: " + queryResult.rdd.partitions.size)
+    println("Number of chunks in query result" + result.anyVec().nChunks())
 
     val train: H2OFrame = result('Year, 'Month, 'DayofMonth, 'DayOfWeek, 'CRSDepTime, 'CRSArrTime,
       'UniqueCarrier, 'FlightNum, 'TailNum, 'CRSElapsedTime, 'Origin, 'Dest,
       'Distance, 'IsDepDelayed )
-    //train.replace(train.numCols()-1, train.lastVec().toEnum)
-    println(train.lastVec().naCnt())
+    train.replace(train.numCols()-1, train.lastVec().toCategoricalVec)
+    train.update(null)
+    println(s"Any vec chunk cnt: ${train.anyVec().nChunks()}")
     // Configure Deep Learning algorithm
     val dlParams = new DeepLearningParameters()
     dlParams._train = train
@@ -64,10 +75,15 @@ object PubDev928Test extends SparkContextSupport {
 
     // THIS WILL FAIL
     val testFrame : H2OFrame = result
-    // Verify that testFrame has at least on chunk with 0-rows
-    val av = testFrame.anyVec();
+    // Verify that testFrame has at least one chunk with 0-rows
+    val av = testFrame.anyVec()
+    println(s"Test frame chunk cnt: ${av.nChunks()}")
+    for (i <- 0 until av.nChunks()) {
+      println(av.chunkForChunkIdx(i).len())
+    }
     assert( (0 until av.nChunks()).exists(idx => av.chunkForChunkIdx(idx).len() == 0), "At least on chunk with 0-rows has to exist!")
 
+    // And run scoring on dataset which contains at least one chunk with zero-lines
     val predictionH2OFrame = dlModel.score(testFrame)('predict)
     assert(predictionH2OFrame.numRows() == testFrame.numRows())
   }

@@ -90,7 +90,7 @@ You can configure Sparkling Water using the following variables:
 3. Create an H<sub>2</sub>O cloud using all 3 Spark workers:
   ```scala
   import org.apache.spark.h2o._
-  val h2oContext = new H2OContext(sc).start()
+  val h2oContext = H2OContext.getOrCreate(sc)
   import h2oContext._
   ```
 
@@ -151,9 +151,9 @@ You can configure Sparkling Water using the following variables:
 
 11. Run deep learning to produce a model estimating arrival delay:
   ```scala
-  import hex.deeplearning.DeepLearning
-  import hex.deeplearning.DeepLearningParameters  
-  import hex.deeplearning.DeepLearningParameters.Activation
+  import _root_.hex.deeplearning.DeepLearning
+  import _root_.hex.deeplearning.DeepLearningParameters  
+  import _root_.hex.deeplearning.DeepLearningParameters.Activation
   val dlParams = new DeepLearningParameters()
   dlParams._train = bigDataFrame
   dlParams._response_column = 'ArrDelay
@@ -238,7 +238,7 @@ The initialization of H2O remains the same, with the exception of importing data
 import org.apache.spark.h2o._
 import org.apache.spark.examples.h2o._
 // Create H2O context
-val h2oContext = new H2OContext(sc).start()
+val h2oContext = H2OContext.getOrCreate(sc)
 // Export H2O context to the 
 import h2oContext._
 

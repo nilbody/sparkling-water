@@ -1,13 +1,30 @@
+/*
+* Licensed to the Apache Software Foundation (ASF) under one or more
+* contributor license agreements.  See the NOTICE file distributed with
+* this work for additional information regarding copyright ownership.
+* The ASF licenses this file to You under the Apache License, Version 2.0
+* (the "License"); you may not use this file except in compliance with
+* the License.  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 package org.apache.spark.examples.h2o
 
 import hex.{ModelMetrics, FrameSplitter}
 import hex.splitframe.ShuffleSplitFrame
 import hex.tree.gbm.GBMModel
 import hex.Model
-import org.apache.spark.h2o.{H2OContext, H2OFrame}
+import org.apache.spark.h2o.{VecUtils, H2OContext, H2OFrame}
 import org.apache.spark.{SparkConf, SparkContext}
 import water.fvec.{NewChunk, Frame, Chunk}
-import water.parser.ValueString
+import water.parser.BufferedString
 import water._
 
 /**
@@ -33,11 +50,11 @@ object DemoUtils {
         println ("Chunks: " + cs.mkString(","))
         for (r <- 0 until cs(0)._len) {
           for (c <- cs) {
-            val vstr = new ValueString
+            val vstr = new BufferedString
             if (c.vec().isString) {
               c.atStr(vstr, r)
               print(vstr.toString + ",")
-            } else if (c.vec().isEnum) {
+            } else if (c.vec().isCategorical) {
               print(c.vec().domain()(c.at8(r).asInstanceOf[Int]) + ", ")
             } else {
               print(c.atd(r) + ", ")
@@ -49,12 +66,24 @@ object DemoUtils {
     }.doAll(fr)
   }
 
+  @deprecated("Use H2OFrame API, the method will be removed with H2O upgrade", "NA")
+  def allStringVecToCategorical(hf: H2OFrame): H2OFrame = {
+    hf.vecs().indices
+      .filter(idx => hf.vec(idx).isString)
+      .foreach(idx => hf.replace(idx, hf.vec(idx).toCategoricalVec).remove())
+    // Update frame in DKV
+    water.DKV.put(hf)
+    // Return it
+    hf
+  }
+
   def residualPlotRCode(prediction:Frame, predCol: String, actual:Frame, actCol:String, h2oContext: H2OContext = null):String = {
     val (ip, port) = if (h2oContext != null) {
       val s = h2oContext.h2oLocalClient.split(":")
       (s(0), s(1))
-    } else
+    } else {
       ("127.0.0.1", "54321")
+    }
 
     s"""# R script for residual plot
         |library(h2o)

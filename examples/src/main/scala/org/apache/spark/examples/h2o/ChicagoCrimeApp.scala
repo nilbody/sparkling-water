@@ -1,3 +1,20 @@
+/*
+* Licensed to the Apache Software Foundation (ASF) under one or more
+* contributor license agreements.  See the NOTICE file distributed with
+* this work for additional information regarding copyright ownership.
+* The ASF licenses this file to You under the Apache License, Version 2.0
+* (the "License"); you may not use this file except in compliance with
+* the License.  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 package org.apache.spark.examples.h2o
 
 import hex.deeplearning.DeepLearningModel
@@ -6,7 +23,7 @@ import hex.tree.gbm.GBMModel
 import hex.Distribution.Family
 import hex.{Model, ModelMetricsBinomial}
 import org.apache.spark.SparkContext
-import org.apache.spark.h2o.{H2OContext, H2OFrame}
+import org.apache.spark.h2o.{VecUtils, H2OContext, H2OFrame}
 import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.joda.time.DateTimeConstants._
 import org.joda.time.format.DateTimeFormat
@@ -14,7 +31,7 @@ import org.joda.time.{DateTimeZone, MutableDateTime}
 import water.MRTask
 import water.app.{ModelMetricsSupport, SparkContextSupport, SparklingWaterApp}
 import water.fvec.{Chunk, NewChunk, Vec}
-import water.parser.ValueString
+import water.parser.BufferedString
 
 /**
  * Chicago Crimes Application predicting probability of arrest in Chicago.
@@ -60,6 +77,8 @@ class ChicagoCrimeApp( weatherFile: String,
 
     //crimeWeather.printSchema()
     val crimeWeatherDF:H2OFrame = crimeWeather
+    // Transform all string columns into categorical
+    DemoUtils.allStringVecToCategorical(crimeWeatherDF)
 
     //
     // Split final data table
@@ -96,13 +115,6 @@ class ChicagoCrimeApp( weatherFile: String,
       """.stripMargin)
 
     (gbmModel, dlModel)
-  }
-
-  def shutdown(sc: SparkContext): Unit = {
-    // Shutdown Spark
-    sc.stop()
-    // Shutdown H2O explicitly (at least the driver)
-    water.H2O.shutdown(0)
   }
 
   def GBMModel(train: H2OFrame, test: H2OFrame, response: String,
@@ -230,6 +242,9 @@ class ChicagoCrimeApp( weatherFile: String,
     val srdd: DataFrame = sqlContext.sparkContext.parallelize(Seq(crime)).toDF
     // Join table with census data
     val row: H2OFrame = censusTable.join(srdd).where('Community_Area === 'Community_Area_Number) //.printSchema
+    // Transform all string columns into categorical
+    DemoUtils.allStringVecToCategorical(row)
+
     val predictTable = model.score(row)
     val probOfArrest = predictTable.vec("true").at(0)
 
@@ -246,7 +261,7 @@ object ChicagoCrimeApp extends SparkContextSupport {
     // SQL support
     val sqlContext = new SQLContext(sc)
     // Start H2O services
-    val h2oContext = new H2OContext(sc).start()
+    val h2oContext = H2OContext.getOrCreate(sc)
 
     val app = new ChicagoCrimeApp(
                 weatherFile = "hdfs://mr-0xd6-precise1.0xdata.loc/datasets/chicagoAllWeather.csv",
@@ -278,7 +293,7 @@ object ChicagoCrimeApp extends SparkContextSupport {
     }
 
     // Shutdown full stack
-    app.shutdown(sc)
+    app.shutdown()
   }
 
   def SEASONS = Array[String]("Spring", "Summer", "Autumn", "Winter")
@@ -289,7 +304,7 @@ object ChicagoCrimeApp extends SparkContextSupport {
     else if (month >= SEPTEMBER && month <= OCTOBER) 2 // Autumn
     else 3 // Winter
 }
-
+// scalastyle:off rddtype
 case class Crime(Year: Short, Month: Byte, Day: Byte, WeekNum: Byte, HourOfDay: Byte,
                  Weekend:Byte, Season: String, WeekDay: Byte,
                  IUCR: Short,
@@ -341,6 +356,7 @@ object Crime {
       minTemp, maxTemp, meanTemp)
   }
 }
+// scalastyle:on rddtype
 
 /**
  * Adhoc date column refinement.
@@ -352,13 +368,13 @@ class RefineDateColumn(val datePattern: String,
                        val dateTimeZone: String) extends MRTask[RefineDateColumn] {
   // Entry point
   def doIt(col: Vec): H2OFrame = {
-    val inputCol = if (col.isEnum) col.toStringVec else col
+    val inputCol = if (col.isCategorical) col.toStringVec else col
     val result = new H2OFrame(
-      doAll(8, inputCol).outputFrame(
+      doAll(Array[Byte](Vec.T_NUM, Vec.T_NUM, Vec.T_NUM, Vec.T_NUM, Vec.T_NUM, Vec.T_NUM, Vec.T_NUM, Vec.T_NUM), inputCol).outputFrame(
         Array[String]("Day", "Month", "Year", "WeekNum", "WeekDay", "Weekend", "Season", "HourOfDay"),
         Array[Array[String]](null, null, null, null, null, null,
           ChicagoCrimeApp.SEASONS, null)))
-    if (col.isEnum) inputCol.remove()
+    if (col.isCategorical) inputCol.remove()
     result
   }
 
@@ -369,7 +385,7 @@ class RefineDateColumn(val datePattern: String,
     val dateChunk = cs(0)
     val (dayNC, monthNC, yearNC, weekNC, weekdayNC, weekendNC, seasonNC, hourNC)
     = (ncs(0), ncs(1), ncs(2), ncs(3), ncs(4), ncs(5), ncs(6), ncs(7))
-    val valStr = new ValueString()
+    val valStr = new BufferedString()
     val mDateTime = new MutableDateTime()
     for(row <- 0 until dateChunk.len()) {
       if (dateChunk.isNA(row)) {

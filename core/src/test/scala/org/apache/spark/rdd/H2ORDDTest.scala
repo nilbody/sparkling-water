@@ -18,12 +18,12 @@ package org.apache.spark.rdd
 
 import org.apache.spark.SparkContext
 import org.apache.spark.h2o.util.SharedSparkTestContext
-import org.apache.spark.h2o.{H2OFrame, DoubleHolder, IntHolder, StringHolder}
+import org.apache.spark.h2o._
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 import water.fvec.Vec
-import water.parser.{Categorical, ValueString}
+import water.parser.{Categorical, BufferedString}
 
 /**
  * Testing schema for h2o schema rdd transformation.
@@ -70,14 +70,17 @@ class H2ORDDTest extends FunSuite with SharedSparkTestContext {
     val rdd = sc.parallelize(1 to 1000, 100).map( v => StringHolder(Some(v.toString)))
     val dataFrame : H2OFrame = hc.asH2OFrame(rdd)
 
-    assert (dataFrame.vec(0).isEnum, "The vector type should be enum")
-    assert (dataFrame.vec(0).domain().length == 1000, "The vector domain should be 1000")
+    assert (dataFrame.vec(0).isString, "The vector type should be of string type")
+    assert (dataFrame.vec(0).domain() == null, "The vector domain should be <null>")
+
+    // Transform string vector to categorical
+    dataFrame.replace(0, dataFrame.vec(0).toCategoricalVec).remove()
 
     assertBasicInvariants(rdd, dataFrame, (row, vec) => {
       val dom = vec.domain()
       val value = dom(vec.at8(row).asInstanceOf[Int]) // value stored at row-th
       // Using == since int should be mapped strictly to doubles
-      assert (row+1 == value.toInt, "The H2OFrame values should match row numbers")
+      assert (row + 1 == value.toInt, "The H2OFrame values should match row numbers")
     })
     // Clean up
     dataFrame.delete()
@@ -86,12 +89,12 @@ class H2ORDDTest extends FunSuite with SharedSparkTestContext {
 
   test("RDD[StringHolder] to H2OFrame[String] and back") {
 
-    val rdd = sc.parallelize(1 to (Categorical.MAX_ENUM_SIZE + 1), 100).map( v => StringHolder(Some(v.toString)))
+    val rdd = sc.parallelize(1 to (Categorical.MAX_CATEGORICAL_COUNT + 1), 100).map( v => StringHolder(Some(v.toString)))
     val dataFrame : H2OFrame = hc.asH2OFrame(rdd)
 
     assert (dataFrame.vec(0).isString, "The vector type should be string")
     assert (dataFrame.vec(0).domain() == null, "The vector should have null domain")
-    val valueString = new ValueString()
+    val valueString = new BufferedString()
     assertBasicInvariants(rdd, dataFrame, (row, vec) => {
       val row1 = (row + 1).toString
       val value = vec.atStr(valueString, row) // value stored at row-th

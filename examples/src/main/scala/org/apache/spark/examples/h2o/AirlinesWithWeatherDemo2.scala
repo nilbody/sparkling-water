@@ -1,3 +1,20 @@
+/*
+* Licensed to the Apache Software Foundation (ASF) under one or more
+* contributor license agreements.  See the NOTICE file distributed with
+* this work for additional information regarding copyright ownership.
+* The ASF licenses this file to You under the Apache License, Version 2.0
+* (the "License"); you may not use this file except in compliance with
+* the License.  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 package org.apache.spark.examples.h2o
 
 import java.io.File
@@ -24,7 +41,7 @@ object AirlinesWithWeatherDemo2 extends SparkContextSupport {
     val conf: SparkConf = configure("Sparkling Water Meetup: Use Airlines and Weather Data for delay prediction")
     // Create SparkContext to execute application on Spark cluster
     val sc = new SparkContext(conf)
-    val h2oContext = new H2OContext(sc).start()
+    val h2oContext = H2OContext.getOrCreate(sc)
     import h2oContext._
     // Setup environment
     addFiles(sc,
@@ -74,7 +91,7 @@ object AirlinesWithWeatherDemo2 extends SparkContextSupport {
     // Instead of using RDD API we will directly split H2O Frame
     val joinedH2OFrame:H2OFrame = joinedTable // Invoke implicit transformation
     // Transform date related columns to enums
-    for( i <- 0 to 2) joinedH2OFrame.replace(i, joinedH2OFrame.vec(i).toEnum)
+    for( i <- 0 to 2) joinedH2OFrame.replace(i, joinedH2OFrame.vec(i).toCategoricalVec)
 
     //
     // Use low-level task to split the frame

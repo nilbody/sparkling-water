@@ -4,6 +4,29 @@ ChangeLog
 ## In current master
   - Attach metadata derived from H2OFrame to Spark DataFrame
   - Improved logging subsystem
+  - Expose new REST end-points
+    - to interpret Scala code
+    - to perform transformation between Spark DataFrame and H2O Frame
+  - Fix all scripts and create automatic tests for them
+  - [SW-39] pySparkling: use Sparkling Water from Python
+  - Model serialization support
+  - Upgrade of H2O dependency to 3.6.0.8
+  - Fixes
+    - [PUBDEV-282](https://0xdata.atlassian.net/browse/PUBDEV-282) Create windows batch scripts for starting sparkling-shell and running examples
+    - [SW-5, SW-17, SW-25](https://0xdata.atlassian.net/browse/SW-25) Remove categorical handling during asH2OFrame() transformation
+    - [SW-20](https://0xdata.atlassian.net/browse/SW-20) H2OFrame provides nicer API accepting parser setup
+    - [SW-32](https://0xdata.atlassian.net/browse/SW-32) Update documentation and remove top-level images folder
+    - [SW-33](https://0xdata.atlassian.net/browse/SW-33) Remove usage of deprecated VecUtils class
+    - [SW-38](https://0xdata.atlassian.net/browse/SW-38)  Introduces Sparkling Water parameter to setup location of H2O logs
+    - [SW-39](https://0xdata.atlassian.net/browse/SW-39)  PySparkling: Support of Sparkling Water from PySpark
+    - [SW-40](https://0xdata.atlassian.net/browse/SW-40)  PySparkling: as\_h2o\_frame method accepts name of target H2O Frame
+    - [SW-41](https://0xdata.atlassian.net/browse/SW-41) H2OContext#asH2OFrame now
+      accepts name for resulting H2OFrame.
+    - fix idea setup
+    - fixes in coding typos
+      - cloud name was ignored
+      - wrong property name
+    - fix a bug in launch scripts overriding default value of `spark.driver.extraJavaOptions`
 
 ##v1.4.0 (2015-07-06)
   - Support of primitives type in transformation from RDD to H2OFrame

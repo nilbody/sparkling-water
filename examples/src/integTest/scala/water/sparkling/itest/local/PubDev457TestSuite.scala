@@ -21,6 +21,8 @@ class PubDev457TestSuite extends FunSuite with SparkITest {
     launch("water.sparkling.itest.local.PubDev457Test",
       env {
         sparkMaster("local-cluster[3,2,1024]")
+        conf("spark.executor.memory", "1g")
+        conf("spark.driver.memory", "1g")
       }
     )
   }
@@ -34,7 +36,7 @@ object PubDev457Test extends SparkContextSupport {
   def main(args: Array[String]): Unit = {
     val conf = configure("PUBDEV-457")
     val sc = new SparkContext(conf)
-    val h2oContext = new H2OContext(sc).start()
+    val h2oContext = H2OContext.getOrCreate(sc)
     import h2oContext._
     val sqlContext = new SQLContext(sc)
     import sqlContext.implicits._

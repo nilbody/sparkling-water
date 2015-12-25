@@ -44,7 +44,7 @@ object H2OSchemaUtils {
         putLong("count", vec.length()).
         putLong("naCnt", vec.naCnt())
 
-      if (vec.isEnum) {
+      if (vec.isCategorical) {
         metadata = metadata.putStringArray("vals", vec.domain()).
           putLong("cardinality", vec.cardinality().toLong)
       } else if (vec.isNumeric) {
@@ -79,7 +79,7 @@ object H2OSchemaUtils {
     v.get_type() match {
       case Vec.T_BAD  => ByteType // vector is full of NAs, use any type
       case Vec.T_NUM  => numericVecTypeToDataType(v)
-      case Vec.T_ENUM => StringType
+      case Vec.T_CAT  => StringType
       case Vec.T_UUID => StringType
       case Vec.T_STR  => StringType
       case Vec.T_TIME => TimestampType
@@ -104,7 +104,7 @@ object H2OSchemaUtils {
   }
 
   /** Method translating SQL types into Sparkling Water types */
-  def dataTypeToVecType(dt : DataType, d: Array[String]) : Byte = dt match {
+  def dataTypeToVecType(dt : DataType) : Byte = dt match {
     case BinaryType  => Vec.T_NUM
     case ByteType    => Vec.T_NUM
     case ShortType   => Vec.T_NUM
@@ -114,11 +114,7 @@ object H2OSchemaUtils {
     case DoubleType  => Vec.T_NUM
     case BooleanType => Vec.T_NUM
     case TimestampType => Vec.T_TIME
-    case StringType  => if (d!=null && d.length < water.parser.Categorical.MAX_ENUM_SIZE) {
-                          Vec.T_ENUM
-                        } else {
-                          Vec.T_STR
-                        }
+    case StringType  => Vec.T_STR
     //case StructType  => dt.
     case _ => throw new IllegalArgumentException(s"Unsupported type $dt")
   }
@@ -126,15 +122,16 @@ object H2OSchemaUtils {
   /** Return flattenized type - recursively transforms StrucType into Seq of encapsulated types. */
   def flatSchema(s: StructType, typeName: Option[String] = None, nullable: Boolean = false): Seq[StructField] = {
     s.fields.flatMap(f =>
-      if (f.dataType.isInstanceOf[StructType])
+      if (f.dataType.isInstanceOf[StructType]) {
         flatSchema(f.dataType.asInstanceOf[StructType],
-          typeName.map(s => s"$s${f.name}.").orElse(Option(s"${f.name}.")),
-          nullable || f.nullable)
-      else
+                   typeName.map(s => s"$s${f.name}.").orElse(Option(s"${f.name}.")),
+                   nullable || f.nullable)
+      } else {
         Seq(StructField(
           typeName.map(n => s"$n${f.name}").getOrElse(f.name),
           f.dataType,
-          f.nullable || nullable)))
+          f.nullable || nullable))
+      })
   }
 
   /** Returns expanded schema
@@ -167,7 +164,7 @@ object H2OSchemaUtils {
       field.dataType match {
         case ArrayType(aryType,nullable) => {
           val result = (0 until fmaxLens(arrayCnt)).map(i =>
-            (path, StructField(field.name+i.toString, aryType, nullable), ARRAY_TYPE)
+            (path, StructField(field.name + i.toString, aryType, nullable), ARRAY_TYPE)
           )
           arrayCnt += 1
           result
@@ -175,7 +172,7 @@ object H2OSchemaUtils {
         case t if t.isInstanceOf[UserDefinedType[_]] => {
           // t.isInstanceOf[UserDefinedType[mllib.linalg.Vector]]
           val result = (0 until fmaxLens(numOfArrayCols + vecCnt)).map(i =>
-            (path, StructField(field.name+i.toString, DoubleType, true), VEC_TYPE)
+            (path, StructField(field.name + i.toString, DoubleType, true), VEC_TYPE)
           )
           vecCnt += 1
           result
@@ -219,30 +216,6 @@ object H2OSchemaUtils {
       case StructType(fs) => collectVectorLikeTypes(fs, path++Seq(i))
       case t => if (t.isInstanceOf[UserDefinedType[_/*mllib.linalg.Vector*/]]) Seq(path++Seq(i)) else Nil
     })
-  }
-
-  private[h2o]
-  def collectColumnDomains(sc: SparkContext,
-                            rdd: RDD[Row],
-                            stringTypesIdx: Seq[Seq[Int]]): Array[Array[String]] = {
-    // Create accumulable collections for each possible string variable
-    val accs = stringTypesIdx.indices.map( _ => sc.accumulableCollection(new mutable.HashSet[String]()))
-    // TODO: perform via partition, indicates string columns and fail early
-    rdd.foreach { r => { // row
-      // Update accumulable variables
-      stringTypesIdx.indices.foreach { k => {
-        val indx = stringTypesIdx(k)
-        val acc = accs(k)
-        var i = 0
-        var subRow = r
-        while (i < indx.length-1 && !subRow.isNullAt(indx(i))) { subRow = subRow.getAs[Row](indx(i)); i += 1 }
-        if (!subRow.isNullAt(indx(i))) acc += subRow.getString(indx(i))
-      }
-      }
-    }
-    }
-    // Domain for each enum column or null
-    accs.map(acc => if (acc.value.size > Categorical.MAX_ENUM_SIZE) null else acc.value.toArray.sorted).toArray
   }
 
   /** Collect max size of stored arrays and MLLib vectors.

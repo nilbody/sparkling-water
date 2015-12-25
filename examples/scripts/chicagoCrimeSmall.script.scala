@@ -1,8 +1,20 @@
+/**
+ * Launch following commands:
+ *   export MASTER='local-cluster[3,2,1024]'
+ *   bin/sparkling-shell -i examples/scripts/chicagoCrimeSmall.script.scala
+ *
+  * When running using spark shell or using scala rest API:
+  *    SQLContext is available as sqlContext
+  *     - if you want to use sqlContext implicitly, you have to redefine it like: implicit val sqlContext = sqlContext,
+  *      butter better is to use it like this: implicit val sqlContext = SQLContext.getOrCreate(sc)
+  *    SparkContext is available as sc
+  */
 // 1. Create an environment
 import org.apache.spark.SparkFiles
 import org.apache.spark.examples.h2o.DemoUtils._
 import org.apache.spark.examples.h2o.{Crime, ChicagoCrimeApp}
 import org.apache.spark.h2o.H2OContext
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SQLContext
 
 // 2. Register local files
@@ -13,9 +25,9 @@ addFiles(sc,
 )
 
 // 3. Create SQL support
-implicit val sqlContext = new SQLContext(sc)
+implicit val sqlContext = SQLContext.getOrCreate(sc)
 // 4. Start H2O services
-implicit val h2oContext = new H2OContext(sc).start()
+implicit val h2oContext = H2OContext.getOrCreate(sc)
 
 // 5. Create App
 val app = new ChicagoCrimeApp(
@@ -25,6 +37,7 @@ val app = new ChicagoCrimeApp(
 
 // 6. Load data
 val (weatherTable,censusTable,crimesTable) = app.loadAll()
+
 // 7. Train model
 val (gbmModel, dlModel) = app.train(weatherTable, censusTable, crimesTable)
 

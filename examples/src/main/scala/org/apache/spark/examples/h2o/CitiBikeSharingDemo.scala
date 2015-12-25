@@ -1,3 +1,20 @@
+/*
+* Licensed to the Apache Software Foundation (ASF) under one or more
+* contributor license agreements.  See the NOTICE file distributed with
+* this work for additional information regarding copyright ownership.
+* The ASF licenses this file to You under the Apache License, Version 2.0
+* (the "License"); you may not use this file except in compliance with
+* the License.  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 package org.apache.spark.examples.h2o
 
 import java.io.File
@@ -11,7 +28,7 @@ import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.joda.time.MutableDateTime
 import water.app.SparkContextSupport
-import water.fvec.{NewChunk, Chunk, Frame}
+import water.fvec.{Vec, NewChunk, Chunk, Frame}
 import water.util.Timer
 import water.{Key, MRTask}
 import scala.collection.mutable
@@ -32,7 +49,7 @@ object CitiBikeSharingDemo extends SparkContextSupport {
 
     // Create SparkContext to execute application on Spark cluster
     val sc = new SparkContext(conf)
-    implicit val h2oContext = new H2OContext(sc).start()
+    implicit val h2oContext = H2OContext.getOrCreate(sc)
     import h2oContext._
 
     implicit val sqlContext = new SQLContext(sc)
@@ -225,7 +242,7 @@ object CitiBikeSharingDemo extends SparkContextSupport {
 
 class TimeSplit extends MRTask[TimeSplit] {
   def doIt(time: H2OFrame):H2OFrame =
-      new H2OFrame(doAll(1, time).outputFrame(Array[String]("Days"), null))
+      new H2OFrame(doAll(Array(Vec.T_NUM), time).outputFrame(Array[String]("Days"), null))
 
   override def map(msec: Chunk, day: NewChunk):Unit = {
     for (i <- 0 until msec.len) {
@@ -236,7 +253,7 @@ class TimeSplit extends MRTask[TimeSplit] {
 
 class TimeTransform extends MRTask[TimeSplit] {
   def doIt(days: H2OFrame):H2OFrame =
-    new H2OFrame(doAll(2, days).outputFrame(Array[String]("Month", "DayOfWeek"), null))
+    new H2OFrame(doAll(Array(Vec.T_NUM, Vec.T_NUM), days).outputFrame(Array[String]("Month", "DayOfWeek"), null))
 
   override def map(in: Array[Chunk], out: Array[NewChunk]):Unit = {
     val days = in(0)

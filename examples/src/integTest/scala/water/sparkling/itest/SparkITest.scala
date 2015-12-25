@@ -1,6 +1,7 @@
 package water.sparkling.itest
 
 import org.apache.spark.deploy.SparkSubmit
+import org.apache.spark.repl.REPLClassServerUtils
 import org.scalatest.{BeforeAndAfterEach, Tag, Suite}
 import scala.collection.mutable
 
@@ -36,6 +37,9 @@ trait SparkITest extends BeforeAndAfterEach { self: Suite =>
       // Disable GA collection by default
       env.sparkConf.flatMap( p => Seq("--conf", s"${p._1}=${p._2}") ) ++
       Seq("--conf", "spark.ext.h2o.disable.ga=true") ++
+      Seq("--conf", "spark.driver.extraJavaOptions=-XX:MaxPermSize=384m") ++
+      Seq("--conf", "hdp.version="+env.hdpVersion) ++
+      Seq("--conf", s"spark.ext.h2o.cloud.name=sparkling-water-${className.replace('.','-')}") ++
       Seq[String](env.testJar)
 
     if(!env.sparkMaster.startsWith("yarn")) {
@@ -69,6 +73,9 @@ trait SparkITest extends BeforeAndAfterEach { self: Suite =>
       sys.props.getOrElse("spark.master",
         fail("The variable 'MASTER' should point to Spark cluster")))
 
+    lazy val hdpVersion = sys.props.getOrElse("sparkling.test.hdp.version",
+      fail("The variable 'sparkling.test.hdp.version' is not set! It should containg version of hdp used"))
+
     def verbose:Boolean = true
 
     def sparkConf: mutable.Map[String, String]
@@ -76,6 +83,7 @@ trait SparkITest extends BeforeAndAfterEach { self: Suite =>
 
   private class TestEnvironment extends IntegTestEnv {
     val conf = mutable.HashMap.empty[String,String] += "spark.testing" -> "true"
+    conf += "spark.repl.class.uri" -> REPLClassServerUtils.classServerUri
     override def sparkConf: mutable.Map[String, String] = conf
   }
 
