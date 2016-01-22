@@ -12,6 +12,7 @@ if (project.hasProperty("doRelease")) {
 // classpath
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
         jcenter()
         maven { url "http://dl.bintray.com/releashaus/release" }
@@ -84,7 +85,7 @@ configure(subprojects) { project ->
     version = rootProject.version
 
     repositories {
-
+        mavenLocal()
         mavenCentral()
 
         maven {
